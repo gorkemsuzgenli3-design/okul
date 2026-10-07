@@ -70,7 +70,7 @@ async function boot(){
   const s=await api('/api/state'); STATE=s; ME=s.user;
   $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
   const roleTr={admin:'Yönetici',teacher:'Öğretmen',parent:'Veli'}[ME.role]||ME.role;
-  $('#whoami').innerHTML=`<b>${esc(ME.name)}</b>${roleTr} · ${esc(ME.username)}`;
+  $('#whoami').innerHTML=`<b>${esc(ME.name)}</b>${roleTr} ·${esc(ME.username)}`;
   buildNav();
   if(ME.mustChange) ownPwModal(true);   // ilk giriste sifre degistirmeye zorla
 }
@@ -112,15 +112,116 @@ function clsName(id){ const c=(STATE.classes||[]).find(x=>x.id===id); return c?c
 function studentsOfClass(cid){ return (STATE.students||[]).filter(s=>s.classId===cid); }
 function myClassIds(){ const set=new Set(); (ME.teach||[]).forEach(t=>t.classIds.forEach(c=>set.add(c))); return [...set]; }
 function myClasses(){ const ids=new Set(myClassIds()); return (STATE.classes||[]).filter(c=>ids.has(c.id)); }
+
+/* DERS PROGRAMI GÖRÜNTÜLEME VE DÜZENLEME */
 function schedHTML(obj){
   const keys=Object.keys(obj||{}); if(!keys.length) return '<div class="empty">Program bulunmuyor</div>';
+  const isAdmin = ME && ME.role === 'admin';
+  
   return keys.map(k=>{
     const days=obj[k]||[];
-    return `<div class="panel"><div class="panel-head"><h3>${esc(k)}</h3></div>
-      <div class="sched">${days.map(d=>`<div class="sched-day"><h4>${esc(d.gun)}</h4>
-        ${(d.dersler||[]).map(s=>`<div class="sched-slot"><span>${esc(s.saat)}</span><b>${esc(s.ders||'—')}</b></div>`).join('')}
+    return `<div class="panel">
+      <div class="panel-head">
+        <h3>${esc(k)}</h3>${isAdmin ? `<button class="btn btn-sm btn-primary" data-add-slot="${esc(k)}">+ Ders Ekle</button>` : ''}
+      </div>
+      <div class="sched">${days.map((d, dIdx)=>`<div class="sched-day"><h4>${esc(d.gun)}</h4>
+        ${(d.dersler||[]).map((s, sIdx)=>`<div class="sched-slot">
+          <span>${esc(s.saat)}</span>
+          <b>${esc(s.ders\vert{}\vert{}'—')}</b>${isAdmin ? `
+            <div class="sched-actions">
+              <button class="btn btn-sm" data-edit-slot="${esc(k)}" data-d="${dIdx}" data-s="${sIdx}">Düzenle</button>
+              <button class="btn btn-sm btn-danger" data-del-slot="${esc(k)}" data-d="${dIdx}" data-s="${sIdx}">Sil</button>
+            </div>
+          ` : ''}
+        </div>`).join('')}
       </div>`).join('')}</div></div>`;
   }).join('');
+}
+
+function bindSchedEvents(){
+  if(!ME || ME.role !== 'admin') return;
+  
+  // Ders Ekleme
+  $('#content').querySelectorAll('[data-add-slot]').forEach(b=>{
+    b.onclick=()=>{
+      const targetGroup = b.dataset.addSlot;
+      openModal(`${esc(targetGroup)} için Ders Ekle`,
+        `<div class="field"><label>Gün</label>
+           <select id="sDay">
+             <option value="Pazartesi">Pazartesi</option>
+             <option value="Salı">Salı</option>
+             <option value="Çarşamba">Çarşamba</option>
+             <option value="Perşembe">Perşembe</option>
+             <option value="Cuma">Cuma</option>
+             <option value="Cumartesi">Cumartesi</option>
+             <option value="Pazar">Pazar</option>
+           </select>
+         </div>
+         <div class="field"><label>Saat Aralığı</label><input id="sTime" placeholder="örn. 09:00 - 09:40"></div>
+         <div class="field"><label>Ders Adı / Açıklama</label><input id="sName" placeholder="örn. Matematik"></div>
+         <button class="btn btn-primary btn-block" id="saveSlotBtn">Ekle</button>`);
+      
+      $('#saveSlotBtn').onclick=async()=>{
+        try{
+          await mutate('addScheduleSlot', {
+            group: targetGroup,
+            gun: $('#sDay').value,
+            saat: $('#sTime').value.trim(),
+            ders: $('#sName').value.trim()
+          });
+          closeModal();
+          toast('Ders eklendi');
+          go(PAGE);
+        }catch(e){ toast(e.message,'err'); }
+      };
+    };
+  });
+
+  // Ders Düzenleme
+  $('#content').querySelectorAll('[data-edit-slot]').forEach(b=>{
+    b.onclick=()=>{
+      const group = b.dataset.editSlot;
+      const dIdx = parseInt(b.dataset.d);
+      const sIdx = parseInt(b.dataset.s);
+      const item = STATE.schedule[group][dIdx].dersler[sIdx];
+      const gun = STATE.schedule[group][dIdx].gun;
+
+      openModal('Ders Düzenle',
+        `<div class="field"><label>Gün</label><input value="${esc(gun)}" disabled></div>
+         <div class="field"><label>Saat Aralığı</label><input id="sTime" value="${esc(item.saat)}"></div>
+         <div class="field"><label>Ders Adı</label><input id="sName" value="${esc(item.ders)}"></div>
+         <button class="btn btn-primary btn-block" id="updateSlotBtn">Güncelle</button>`);
+
+      $('#updateSlotBtn').onclick=async()=>{
+        try{
+          await mutate('updateScheduleSlot', {
+            group, dIdx, sIdx,
+            saat: $('#sTime').value.trim(),
+            ders: $('#sName').value.trim()
+          });
+          closeModal();
+          toast('Ders güncellendi');
+          go(PAGE);
+        }catch(e){ toast(e.message,'err'); }
+      };
+    };
+  });
+
+  // Ders Silme
+  $('#content').querySelectorAll('[data-del-slot]').forEach(b=>{
+    b.onclick=async()=>{
+      if(!confirm('Bu dersi programdan silmek istediğinize emin misiniz?')) return;
+      try{
+        await mutate('deleteScheduleSlot', {
+          group: b.dataset.delSlot,
+          dIdx: parseInt(b.dataset.d),
+          sIdx: parseInt(b.dataset.s)
+        });
+        toast('Ders silindi');
+        go(PAGE);
+      }catch(e){ toast(e.message,'err'); }
+    };
+  });
 }
 
 /* ================= ADMIN ================= */
@@ -128,9 +229,7 @@ VIEWS.genel=()=>{
   const u=STATE.users||[];
   const t=u.filter(x=>x.role==='teacher').length, p=u.filter(x=>x.role==='parent').length;
   return `<div class="cards">
-    ${card('Öğretmen',t)}${card('Öğrenci',(STATE.students||[]).length)}${card('Veli',p)}
-    ${card('Sınıf',(STATE.classes||[]).length)}${card('Ders',(STATE.subjects||[]).length)}
-    ${card('Ödev Kaydı',(STATE.grades.homework||[]).length)}</div>
+    ${card('Öğretmen',t)}${card('Öğrenci',(STATE.students||[]).length)}${card('Veli',p)}${card('Sınıf',(STATE.classes||[]).length)}${card('Ders',(STATE.subjects\vert{}\vert{}[]).length)}${card('Ödev Kaydı',(STATE.grades.homework||[]).length)}</div>
     <div class="panel"><div class="panel-head"><h3>Hızlı Bilgi</h3></div>
     <p class="muted">Not: Matematik dersi yönetici panelinde listelenmez. Öğretmen atamaları, veli hesapları ve şifreler buradan yönetilir.</p></div>`;
 };
@@ -191,7 +290,7 @@ function assignModal(uid){
         <label style="display:flex;gap:8px;align-items:center;font-weight:600">
           <input type="checkbox" style="width:auto" data-sub="${s.id}" ${chosen[s.id]?'checked':''}> ${esc(s.name)}</label>
         <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
-        ${(STATE.classes||[]).map(c=>`<label class="tag" style="cursor:pointer"><input type="checkbox" style="width:auto" data-c="${s.id}" value="${c.id}" ${chosen[s.id]&&chosen[s.id].has(c.id)?'checked':''}> ${esc(c.name)}</label>`).join('')}
+        ${(STATE.classes||[]).map(c=>`<label class="tag" style="cursor:pointer"><input type="checkbox" style="width:auto" data-c="${s.id}" value="${c.id}" ${chosen[s.id]&&chosen[s.id].has(c.id)?'checked':''}>${esc(c.name)}</label>`).join('')}
         </div></div>`).join('')}</div>
     <button class="btn btn-primary btn-block" id="sv">Kaydet</button>`;
   openModal('Ders / Sınıf Ata – '+esc(t.name),body);
@@ -273,7 +372,11 @@ VIEWS.exams=()=>{
   const rows=(STATE.exams||[]).map(e=>[esc(e.date),esc(e.studentName),esc(e.className),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`]);
   return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sınav','Not'],rows)}</div>`;
 };
+
+/* DERS PROGRAMI GÖRÜNTÜLEME VE YÖNETİMİ */
 VIEWS.sched=()=>schedHTML(STATE.schedule);
+wire.sched=()=>bindSchedEvents();
+
 VIEWS.audit=()=>{
   const trAct={login:'Giriş',logout:'Çıkış',addUser:'Hesap ekleme',deleteUser:'Hesap silme',setPassword:'Şifre belirleme',
     changeOwnPassword:'Şifre değiştirme',assignTeacher:'Ders atama',setActive:'Hesap durumu',addClass:'Sınıf ekleme',
@@ -285,18 +388,166 @@ VIEWS.audit=()=>{
   return `<div class="panel"><div class="panel-head"><h3>İşlem Kayıtları <span class="muted">(son 120)</span></h3></div>
     ${tbl(['Zaman','Kullanıcı','İşlem','Ayrıntı'],rows)}</div>`;
 };
+
+/* MODERN ÖDEME ARAYÜZÜ VE YÖNETİCİ DÜZENLEME YETKİSİ */
 VIEWS.pay=()=>{
-  const rows=(STATE.payments||[]).map(p=>Object.values(p).filter((v,i)=>i>0).map(v=>esc(v)));
-  const cols=(STATE.payments&&STATE.payments[0])?Object.keys(STATE.payments[0]).filter(k=>k!=='id'):['Kayıt'];
-  return `<div class="panel"><div class="panel-head"><h3>Ödemeler</h3></div>${tbl(cols,rows)}</div>`;
+  const list = STATE.payments || [];
+  const isAdmin = ME && ME.role === 'admin';
+
+  // İstatistikleri Hesaplama
+  let totalTahsil = 0;
+  let totalBekleyen = 0;
+  let totalGeciken = 0;
+
+  list.forEach(p => {
+    const tutar = parseFloat(p.tutar || p.miktar || 0) || 0;
+    const durum = String(p.durum || '').toLowerCase();
+    if(durum.includes('ödendi') || durum.includes('odendi')) totalTahsil += tutar;
+    else if(durum.includes('gecik') || durum.includes('gecikmede')) totalGeciken += tutar;
+    else totalBekleyen += tutar;
+  });
+
+  const cardsHtml = `
+    <div class="cards pay-cards">
+      <div class="card pay-card-ok">
+        <div class="k">Toplam Tahsilat</div>
+        <div class="v">₺${totalTahsil.toLocaleString('tr-TR')}</div>
+      </div>
+      <div class="card pay-card-warn">
+        <div class="k">Bekleyen Ödemeler</div>
+        <div class="v">₺${totalBekleyen.toLocaleString('tr-TR')}</div>
+      </div>
+      <div class="card pay-card-err">
+        <div class="k">Geciken Ödemeler</div>
+        <div class="v">₺${totalGeciken.toLocaleString('tr-TR')}</div>
+      </div>
+    </div>
+  `;
+
+  const rows = list.map(p => {
+    const student = esc(p.ogrenci || p.studentName || p.ad || '—');
+    const amount = `<b>₺${parseFloat(p.tutar || p.miktar || 0).toLocaleString('tr-TR')}</b>`;
+    const date = esc(p.tarih || p.dueDate || '—');
+    
+    // Durum rozeti (Badge)
+    const dStr = String(p.durum || 'Bekliyor');
+    let badgeCls = 'warn';
+    if(dStr.toLowerCase().includes('ödendi') || dStr.toLowerCase().includes('odendi')) badgeCls = 'ok';
+    else if(dStr.toLowerCase().includes('gecik')) badgeCls = 'err';
+    
+    const statusCell = `<span class="badge ${badgeCls}">${esc(dStr)}</span>`;
+
+    const actionCell = isAdmin ? `
+      <button class="btn btn-sm" data-edit-pay="${p.id}">Düzenle</button>
+      <button class="btn btn-sm btn-danger" data-del-pay="${p.id}">Sil</button>
+    ` : '<span class="muted">—</span>';
+
+    return [student, amount, date, statusCell, actionCell];
+  });
+
+  return `
+    ${cardsHtml}
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Ödeme Takip Listesi</h3>
+        ${isAdmin ? `<button class="btn btn-primary btn-sm" id="addPayBtn">+ Yeni Ödeme Ekle</button>` : ''}
+      </div>
+      ${tbl(['Öğrenci / Veli', 'Tutar', 'Son Ödeme Tarihi', 'Durum', 'İşlem'], rows)}
+    </div>
+  `;
+};
+
+wire.pay=()=>{
+  if(!ME || ME.role !== 'admin') return;
+
+  // Yeni Ödeme Ekle
+  const addBtn = $('#addPayBtn');
+  if(addBtn){
+    addBtn.onclick=()=>{
+      openModal('Yeni Ödeme Kaydı Ekle',
+        `<div class="field"><label>Öğrenci / Veli Adı</label><input id="pName" placeholder="örn. Ahmet Yılmaz"></div>
+         <div class="field"><label>Tutar (₺)</label><input id="pAmount" type="number" placeholder="2500"></div>
+         <div class="field"><label>Son Ödeme Tarihi</label><input id="pDate" type="date"></div>
+         <div class="field"><label>Durum</label>
+           <select id="pStatus">
+             <option value="Bekliyor">Bekliyor</option>
+             <option value="Ödendi">Ödendi</option>
+             <option value="Gecikmede">Gecikmede</option>
+           </select>
+         </div>
+         <button class="btn btn-primary btn-block" id="savePayBtn">Kaydet</button>`);
+
+      $('#savePayBtn').onclick=async()=>{
+        try{
+          await mutate('addPayment', {
+            ogrenci: $('#pName').value.trim(),
+            tutar: $('#pAmount').value,
+            tarih: $('#pDate').value,
+            durum: $('#pStatus').value
+          });
+          closeModal();
+          toast('Ödeme eklendi');
+          go('pay');
+        }catch(e){ toast(e.message,'err'); }
+      };
+    };
+  }
+
+  // Ödeme Düzenle
+  $('#content').querySelectorAll('[data-edit-pay]').forEach(b=>{
+    b.onclick=()=>{
+      const id = b.dataset.editPay;
+      const item = (STATE.payments||[]).find(x => x.id === id) || {};
+
+      openModal('Ödeme Düzenle',
+        `<div class="field"><label>Öğrenci / Veli Adı</label><input id="pName" value="${esc(item.ogrenci||item.studentName||'')}"></div>
+         <div class="field"><label>Tutar (₺)</label><input id="pAmount" type="number" value="${item.tutar||item.miktar||''}"></div>
+         <div class="field"><label>Son Ödeme Tarihi</label><input id="pDate" type="date" value="${item.tarih||item.dueDate||''}"></div>
+         <div class="field"><label>Durum</label>
+           <select id="pStatus">
+             <option value="Bekliyor" ${(item.durum==='Bekliyor')?'selected':''}>Bekliyor</option>
+             <option value="Ödendi" ${(item.durum==='Ödendi')?'selected':''}>Ödendi</option>
+             <option value="Gecikmede" ${(item.durum==='Gecikmede')?'selected':''}>Gecikmede</option>
+           </select>
+         </div>
+         <button class="btn btn-primary btn-block" id="updatePayBtn">Güncelle</button>`);
+
+      $('#updatePayBtn').onclick=async()=>{
+        try{
+          await mutate('updatePayment', {
+            id: id,
+            ogrenci: $('#pName').value.trim(),
+            tutar: $('#pAmount').value,
+            tarih: $('#pDate').value,
+            durum: $('#pStatus').value
+          });
+          closeModal();
+          toast('Ödeme güncellendi');
+          go('pay');
+        }catch(e){ toast(e.message,'err'); }
+      };
+    };
+  });
+
+  // Ödeme Sil
+  $('#content').querySelectorAll('[data-del-pay]').forEach(b=>{
+    b.onclick=async()=>{
+      if(!confirm('Bu ödeme kaydını silmek istediğinize emin misiniz?')) return;
+      try{
+        await mutate('deletePayment', { id: b.dataset.delPay });
+        toast('Ödeme kaydı silindi');
+        go('pay');
+      }catch(e){ toast(e.message,'err'); }
+    };
+  });
 };
 
 /* ================= ÖĞRETMEN ================= */
 VIEWS.tgenel=()=>{
   const subs=(STATE.subjects||[]).map(s=>`<span class="tag">${esc(s.name)}</span>`).join('')||'<span class="muted">yok</span>';
   const cls=myClasses().map(c=>`<span class="tag">${esc(c.name)}</span>`).join('')||'<span class="muted">yok</span>';
-  return `<div class="cards">${card('Derslerim',(STATE.subjects||[]).length)}${card('Sınıflarım',myClasses().length)}
-    ${card('Öğrencilerim',(STATE.students||[]).length)}${card('Verdiğim Ödev',(STATE.assignments||[]).length)}</div>
+  return `<div class="cards">${card('Derslerim',(STATE.subjects\vert{}\vert{}[]).length)}${card('Sınıflarım',myClasses().length)}
+    ${card('Öğrencilerim',(STATE.students\vert{}\vert{}[]).length)}${card('Verdiğim Ödev',(STATE.assignments||[]).length)}</div>
     <div class="panel"><div class="panel-head"><h3>Derslerim</h3></div><div>${subs}</div></div>
     <div class="panel"><div class="panel-head"><h3>Sınıflarım</h3></div><div>${cls}</div></div>`;
 };
@@ -371,17 +622,19 @@ wire.texam=()=>{
   $('#content').querySelectorAll('[data-de]').forEach(b=>b.onclick=async()=>{ try{ await mutate('deleteExam',{id:b.dataset.de}); toast('Silindi'); go('texam'); }catch(e){ toast(e.message,'err'); } });
 };
 VIEWS.tsched=()=>schedHTML(STATE.schedule);
+wire.tsched=()=>bindSchedEvents();
 
 /* ================= VELİ ================= */
 VIEWS.pchild=()=>{
   const c=STATE.child; if(!c) return '<div class="empty">Öğrenci kaydı bulunamadı</div>';
   return `<div class="cards">${card('Öğrenci',c.name)}${card('Sınıf',c.className)}
-    ${card('Ödev Kaydı',(STATE.grades.homework||[]).length)}${card('Sınav',(STATE.exams||[]).length)}
+    ${card('Ödev Kaydı',(STATE.grades.homework\vert{}\vert{}[]).length)}${card('Sınav',(STATE.exams||[]).length)}
     ${card('Verilen Ödev',(STATE.assignments||[]).length)}</div>
     <div class="panel"><div class="panel-head"><h3>${esc(c.name)}</h3></div>
     <p class="muted">Sınıf: ${esc(c.className)}. Soldaki menüden ders programını, ödev sonuçlarını, verilen ödevleri ve sınav notlarını görebilirsiniz.</p></div>`;
 };
 VIEWS.psched=()=>schedHTML(STATE.schedule);
+wire.psched=()=>bindSchedEvents();
 VIEWS.phw=()=>{
   const rows=(STATE.grades.homework||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(h=>
     [esc(h.date),esc(h.subjectName),`<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`]);
@@ -389,12 +642,4 @@ VIEWS.phw=()=>{
 };
 VIEWS.passign=()=>{
   const rows=(STATE.assignments||[]).slice().reverse().map(a=>[esc(a.dueDate||'—'),esc(a.subjectName),esc(a.title),esc(a.desc||'')]);
-  return `<div class="panel"><div class="panel-head"><h3>Verilen Ödevler</h3></div>${tbl(['Teslim','Ders','Ödev','Açıklama'],rows)}</div>`;
-};
-VIEWS.pexam=()=>{
-  const rows=(STATE.exams||[]).slice().reverse().map(e=>[esc(e.date),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Ders','Sınav','Not'],rows)}</div>`;
-};
-
-/* ---- otomatik oturum ---- */
-if(TOKEN){ boot().catch(()=>{ TOKEN=''; localStorage.removeItem('atk_token'); }); }
+  return `<div class
