@@ -82,6 +82,14 @@ async function boot() {
   if (ME.mustChange) ownPwModal(true);
 }
 
+// Oturum jetonu varsa sayfayı yenilediğinde veya ilk açılışta doğrudan boot çalıştır
+if (TOKEN) {
+  boot().catch(() => {
+    TOKEN = '';
+    localStorage.removeItem('atk_token');
+  });
+}
+
 function buildNav() {
   const menus = {
     admin: [['genel', 'Genel Bakış'], ['teachers', 'Öğretmenler'], ['people', 'Öğrenci / Veli'], ['struct', 'Sınıf & Ders'], ['homework', 'Ödev Takibi'], ['assign', 'Verilen Ödevler'], ['exams', 'Sınav Notları'], ['sched', 'Ders Programları'], ['pay', 'Ödemeler'], ['audit', 'İşlem Kayıtları']],
@@ -171,10 +179,10 @@ wire.teachers = () => {
   $('#addTeacher').onclick = () => {
     openModal('Öğretmen Ekle',
       `<div class="field"><label>Ad Soyad</label><input id="n"></div>
-      <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
-      <div class="field"><label>Şifre</label><input id="pw"></div>
-      <p class="muted">En az 8 karakter, bir harf + bir rakam. Öğretmen ilk girişte değiştirir.</p>
-      <button class="btn btn-primary btn-block" id="sv">Ekle</button>`);
+       <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
+       <div class="field"><label>Şifre</label><input id="pw"></div>
+       <p class="muted">En az 8 karakter, bir harf + bir rakam. Öğretmen ilk girişte değiştirir.</p>
+       <button class="btn btn-primary btn-block" id="sv">Ekle</button>`);
     $('#sv').onclick = async () => {
       try {
         await mutate('addUser', { role: 'teacher', name: $('#n').value.trim(), username: $('#us').value.trim(), password: $('#pw').value });
@@ -266,10 +274,10 @@ wire.people = () => {
     const s = (STATE.students || []).find(x => x.id === b.dataset.np);
     openModal('Veli Hesabı Aç – ' + esc(s.name),
       `<div class="field"><label>Veli Adı</label><input id="n" value="${esc(s.name)} Velisi"></div>
-      <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
-      <div class="field"><label>Şifre</label><input id="pw"></div>
-      <p class="muted">En az 8 karakter, bir harf + bir rakam. Veli ilk girişte değiştirir.</p>
-      <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
+       <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
+       <div class="field"><label>Şifre</label><input id="pw"></div>
+       <p class="muted">En az 8 karakter, bir harf + bir rakam. Veli ilk girişte değiştirir.</p>
+       <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
     $('#sv').onclick = async () => {
       try {
         await mutate('addUser', { role: 'parent', name: $('#n').value.trim(), username: $('#us').value.trim(), password: $('#pw').value, studentId: s.id });
@@ -345,7 +353,7 @@ wire.sched = () => {
   const a = $('#schedAdd'); if (a) a.onclick = () => {
     openModal('Yeni Program',
       `<div class="field"><label>Program Adı</label><input id="shn" placeholder="örn. 6.SINIF veya AHMET-7"></div>
-      <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
+       <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
     $('#sv').onclick = async () => {
       const n = $('#shn').value.trim(); if (!n) { toast('Ad gerekli', 'err'); return; }
       try { await mutate('addSchedSheet', { sheet: n }); closeModal(); toast('Program oluşturuldu'); go('sched'); } catch (e) { toast(e.message, 'err'); }
@@ -483,7 +491,7 @@ function payDetailModal(pid) {
       const miktar = $('#nmik').value;
       if (!miktar) { toast('Lütfen bir tutar girin', 'err'); return; }
       try {
-        await mutate('addPayment', { paymentId: pid, tarih, miktar });
+        await mutate('addPayment', { paymentId: pid, tarih, miktar: Number(miktar) });
         toast('Tahsilat eklendi');
         closeModal();
         await refresh();
@@ -498,168 +506,10 @@ function payDetailModal(pid) {
   if (saveDueBtn) {
     saveDueBtn.onclick = async () => {
       try {
-        await mutate('setPaymentDue', { paymentId: pid, odenecek: $('#edue').value });
+        await mutate('setPaymentDue', { paymentId: pid, odenecek: Number($('#edue').value) });
         toast('Ücret güncellendi');
         closeModal();
         await refresh();
         payDetailModal(pid);
       } catch (e) {
-        toast(e.message, 'err');
-      }
-    };
-  }
-
-  $('#modalBody').querySelectorAll('[data-rmpay]').forEach(btn => btn.onclick = async () => {
-    if (!confirm('Bu tahsilat kaydını silmek istiyor musunuz?')) return;
-    try {
-      await mutate('deletePaymentInstallment', { paymentId: pid, index: Number(btn.dataset.rmpay) });
-      toast('Silindi');
-      closeModal();
-      await refresh();
-      payDetailModal(pid);
-    } catch (e) {
-      toast(e.message, 'err');
-    }
-  });
-}
-
-async function payDelete(pid) {
-  if (!confirm('Bu ödeme kaydını tamamen silmek istiyor musunuz?')) return;
-  try { await mutate('deletePayment', { paymentId: pid }); toast('Silindi'); go('pay'); } catch (e) { toast(e.message, 'err'); }
-}
-
-/* ================= ÖĞRETMEN ================= */
-VIEWS.tgenel = () => {
-  const subs = (STATE.subjects || []).map(s => `<span class="tag">${esc(s.name)}</span>`).join('') || '<span class="muted">yok</span>';
-  const cls = myClasses().map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">yok</span>';
-  return `<div class="cards">${card('Derslerim', (STATE.subjects || []).length)}${card('Sınıflarım', myClasses().length)}
-    ${card('Öğrencilerim', (STATE.students || []).length)}${card('Verdiğim Ödev', (STATE.assignments || []).length)}</div>
-    <div class="panel"><div class="panel-head"><h3>Derslerim</h3></div><div>${subs}</div></div>
-    <div class="panel"><div class="panel-head"><h3>Sınıflarım</h3></div><div>${cls}</div></div>`;
-};
-
-function scsFields(idp, withStudent) {
-  const stu = withStudent === false ? '' :
-    `<div class="field"><label>Öğrenci</label><select id="${idp}stu"><option value="">Önce sınıf seçin</option></select></div>`;
-  return `<div class="field"><label>Ders</label><select id="${idp}sub">${opts(STATE.subjects, '', 'id', 'name', 'Ders seçin')}</select></div>
-    <div class="field"><label>Sınıf</label><select id="${idp}cls">${opts(myClasses(), '', 'id', 'name', 'Sınıf seçin')}</select></div>
-    ${stu}`;
-}
-
-function bindClassStudent(idp) {
-  const cs = $('#' + idp + 'cls'); if (!cs) return;
-  cs.onchange = () => {
-    const list = studentsOfClass(cs.value);
-    $('#' + idp + 'stu').innerHTML = list.length ? opts(list, '', 'id', 'name', 'Öğrenci seçin') : '<option value="">Öğrenci yok</option>';
-  };
-}
-
-VIEWS.tgive = () => {
-  const rows = (STATE.assignments || []).slice().reverse().map(a => [esc(a.dueDate || '—'), esc(a.className), esc(a.subjectName), esc(a.title),
-  `<button class="btn btn-sm btn-danger" data-dg="${a.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Yeni Ödev Ver</h3></div>
-    <div class="row">${scsFields('g', false)}
-      <div class="field"><label>Ödev Başlığı</label><input id="gtitle"></div>
-      <div class="field"><label>Teslim Tarihi</label><input id="gdue" type="date"></div></div>
-    <div class="field" style="margin-top:10px"><label>Açıklama</label><textarea id="gdesc"></textarea></div>
-    <button class="btn btn-primary" id="gsave" style="margin-top:12px">Ödevi Kaydet</button></div>
-    <div class="panel"><div class="panel-head"><h3>Verdiğim Ödevler</h3></div>${tbl(['Teslim', 'Sınıf', 'Ders', 'Ödev', 'İşlem'], rows)}</div>`;
-};
-
-wire.tgive = () => {
-  $('#gsave').onclick = async () => {
-    try {
-      await mutate('addAssignment', {
-        subjectId: $('#gsub').value, classId: $('#gcls').value,
-        title: $('#gtitle').value.trim(), desc: $('#gdesc').value.trim(), dueDate: $('#gdue').value
-      }); toast('Ödev verildi'); go('tgive');
-    } catch (e) { toast(e.message, 'err'); }
-  };
-  $('#content').querySelectorAll('[data-dg]').forEach(b => b.onclick = async () => { try { await mutate('deleteAssignment', { id:b.dataset.dg }); toast('Silindi'); go('tgive'); } catch (e) { toast(e.message, 'err'); } });
-};
-
-VIEWS.thw = () => {
-  const rows = (STATE.grades.homework || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(h =>
-    [esc(h.date), esc(h.studentName), esc(h.className), esc(h.subjectName),
-    `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`,
-    `<button class="btn btn-sm btn-danger" data-dh="${h.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Ödev Sonucu Gir</h3></div>
-    <div class="row">${scsFields('h')}
-      <div class="field"><label>Tarih</label><input id="hdate" type="date"></div>
-      <div class="field"><label>Doğru</label><input id="hd" type="number"></div>
-      <div class="field"><label>Yanlış</label><input id="hy" type="number"></div>
-      <div class="field"><label>Boş</label><input id="hb" type="number"></div>
-      <button class="btn btn-primary" id="hsave">Kaydet</button></div></div>
-    <div class="panel"><div class="panel-head"><h3>Girilen Sonuçlar</h3></div>${tbl(['Tarih', 'Öğrenci', 'Sınıf', 'Ders', 'Sonuç', 'İşlem'], rows)}</div>`;
-};
-
-wire.thw = () => {
-  bindClassStudent('h');
-  $('#hsave').onclick = async () => {
-    try {
-      await mutate('addHomework', {
-        subjectId: $('#hsub').value, classId: $('#hcls').value, studentId: $('#hstu').value,
-        date: $('#hdate').value, dogru: $('#hd').value, yanlis: $('#hy').value, bos: $('#hb').value
-      }); toast('Kaydedildi'); go('thw');
-    } catch (e) { toast(e.message, 'err'); }
-  };
-  $('#content').querySelectorAll('[data-dh]').forEach(b => b.onclick = async () => { try { await mutate('deleteHomework', { id: b.dataset.dh }); toast('Silindi'); go('thw'); } catch (e) { toast(e.message, 'err'); } });
-};
-
-VIEWS.texam = () => {
-  const rows = (STATE.exams || []).slice().reverse().map(e => [esc(e.date), esc(e.studentName), esc(e.className), esc(e.subjectName), esc(e.name), `<b>${esc(e.score)}</b>`,
-  `<button class="btn btn-sm btn-danger" data-de="${e.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notu Gir</h3></div>
-    <div class="row">${scsFields('e')}
-      <div class="field"><label>Sınav Adı</label><input id="ename"></div>
-      <div class="field"><label>Not</label><input id="escore"></div>
-      <div class="field"><label>Tarih</label><input id="edate" type="date"></div>
-      <button class="btn btn-primary" id="esave">Kaydet</button></div></div>
-    <div class="panel"><div class="panel-head"><h3>Girilen Notlar</h3></div>${tbl(['Tarih', 'Öğrenci', 'Sınıf', 'Ders', 'Sınav', 'Not', 'İşlem'], rows)}</div>`;
-};
-
-wire.texam = () => {
-  bindClassStudent('e');
-  $('#esave').onclick = async () => {
-    try {
-      await mutate('addExam', {
-        subjectId: $('#esub').value, classId: $('#ecls').value, studentId: $('#estu').value,
-        name: $('#ename').value.trim(), score: $('#escore').value, date: $('#edate').value
-      }); toast('Kaydedildi'); go('texam');
-    } catch (e) { toast(e.message, 'err'); }
-  };
-  $('#content').querySelectorAll('[data-de]').forEach(b => b.onclick = async () => { try { await mutate('deleteExam', { id: b.dataset.de }); toast('Silindi'); go('texam'); } catch (e) { toast(e.message, 'err'); } });
-};
-
-VIEWS.tsched = () => schedHTML(STATE.schedule);
-
-/* ================= VELİ ================= */
-VIEWS.pchild = () => {
-  const c = STATE.child; if (!c) return '<div class="empty">Öğrenci kaydı bulunamadı</div>';
-  return `<div class="cards">${card('Öğrenci', c.name)}${card('Sınıf', c.className)}
-    ${card('Ödev Kaydı', (STATE.grades.homework || []).length)}${card('Sınav', (STATE.exams || []).length)}
-    ${card('Verilen Ödev', (STATE.assignments || []).length)}</div>
-    <div class="panel"><div class="panel-head"><h3>${esc(c.name)}</h3></div>
-    <p class="muted">Sınıf: ${esc(c.className)}. Soldaki menüden ders programını, ödev sonuçlarını, verilen ödevleri ve sınav notlarını görebilirsiniz.</p></div>`;
-};
-
-VIEWS.psched = () => schedHTML(STATE.schedule);
-
-VIEWS.phw = () => {
-  const rows = (STATE.grades.homework || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(h =>
-    [esc(h.date), esc(h.subjectName), `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Ödev Sonuçları</h3></div>${tbl(['Tarih', 'Ders', 'Sonuç'], rows)}</div>`;
-};
-
-VIEWS.passign = () => {
-  const rows = (STATE.assignments || []).slice().reverse().map(a => [esc(a.dueDate || '—'), esc(a.subjectName), esc(a.title), esc(a.desc || '')]);
-  return `<div class="panel"><div class="panel-head"><h3>Verilen Ödevler</h3></div>${tbl(['Teslim', 'Ders', 'Ödev', 'Açıklama'], rows)}</div>`;
-};
-
-VIEWS.pexam = () => {
-  const rows = (STATE.exams || []).slice().reverse().map(e => [esc(e.date), esc(e.subjectName), esc(e.name), `<b>${esc(e.score)}</b>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih', 'Ders', 'Sınav', 'Not'], rows)}</div>`;
-};
-
-/* ---- OTOMATİK OTURUM ---- */
-if (TOKEN) { boot().catch(() => { TOKEN = ''; localStorage.removeItem('atk_token'); }); }
+        toast(e.
