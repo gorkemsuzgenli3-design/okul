@@ -24,7 +24,8 @@ function saveData(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Uygulama Başlatma
+window.initApp = function() {
     if (!localStorage.getItem('users')) saveData('users', defaultData.users);
     if (!localStorage.getItem('schedules')) saveData('schedules', defaultData.schedules);
     if (!localStorage.getItem('payments')) saveData('payments', defaultData.payments);
@@ -35,29 +36,34 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         showLoginForm();
     }
-});
+};
 
-function handleLogin(event) {
+document.addEventListener('DOMContentLoaded', window.initApp);
+
+// Giriş İşlemi
+window.handleLogin = function(event) {
     event.preventDefault();
-    const username = event.target.username.value;
-    const password = event.target.password.value;
+    const usernameInput = document.getElementById('login-username').value.trim();
+    const passwordInput = document.getElementById('login-password').value.trim();
 
     const users = getData('users');
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = users.find(u => u.username === usernameInput && u.password === passwordInput);
 
     if (user) {
         localStorage.setItem('currentUser', JSON.stringify(user));
         showDashboard(user);
     } else {
-        alert('Kullanıcı adı veya şifre hatalı!');
+        alert('Kullanıcı adı veya şifre hatalı!\nYönetici için -> Kullanıcı adı: admin , Şifre: 123');
     }
-}
+};
 
-function handleLogout() {
+// Çıkış İşlemi
+window.handleLogout = function() {
     localStorage.removeItem('currentUser');
-    location.reload();
-}
+    window.initApp();
+};
 
+// Dashboard Gösterimi
 function showDashboard(user) {
     const app = document.getElementById('app');
     
@@ -72,12 +78,12 @@ function showDashboard(user) {
 
         <div class="container">
             <nav class="sidebar">
-                <button onclick="showTab('schedules')" class="tab-btn active">Ders Programı</button>
-                <button onclick="showTab('payments')" class="tab-btn">Ödemeler</button>
+                <button onclick="showTab('schedules')" id="btn-schedules" class="tab-btn active">Ders Programı</button>
+                <button onclick="showTab('payments')" id="btn-payments" class="tab-btn">Ödemeler</button>
             </nav>
 
             <main class="content">
-                <div id="tab-schedules" class="tab-content active">
+                <div id="tab-schedules" class="tab-content" style="display:block;">
                     <div class="section-header">
                         <h3>Ders Programları</h3>
                         ${user.role === 'admin' ? '<button onclick="openScheduleModal()" class="btn-add">+ Ders Ekle</button>' : ''}
@@ -116,13 +122,13 @@ function showDashboard(user) {
     loadPayments();
 }
 
-function showTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+window.showTab = function(tabName) {
+    document.getElementById('tab-schedules').style.display = tabName === 'schedules' ? 'block' : 'none';
+    document.getElementById('tab-payments').style.display = tabName === 'payments' ? 'block' : 'none';
 
-    document.getElementById(`tab-${tabName}`).style.display = 'block';
-    event.target.classList.add('active');
-}
+    document.getElementById('btn-schedules').classList.toggle('active', tabName === 'schedules');
+    document.getElementById('btn-payments').classList.toggle('active', tabName === 'payments');
+};
 
 function loadSchedules() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -165,16 +171,16 @@ function loadSchedules() {
     container.innerHTML = html;
 }
 
-function deleteSchedule(id) {
+window.deleteSchedule = function(id) {
     if (confirm('Bu ders kaydını silmek istediğinize emin misiniz?')) {
         let schedules = getData('schedules');
         schedules = schedules.filter(s => s.id !== id);
         saveData('schedules', schedules);
         loadSchedules();
     }
-}
+};
 
-function openScheduleModal() {
+window.openScheduleModal = function() {
     const day = prompt("Gün:");
     const time = prompt("Saat (Örn: 09:00 - 10:00):");
     const className = prompt("Sınıf:");
@@ -187,7 +193,7 @@ function openScheduleModal() {
         saveData('schedules', schedules);
         loadSchedules();
     }
-}
+};
 
 function loadPayments() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -240,7 +246,7 @@ function loadPayments() {
     document.getElementById('stat-total').innerText = (totalPaid + totalPending).toLocaleString('tr-TR') + ' TL';
 }
 
-function togglePaymentStatus(id) {
+window.togglePaymentStatus = function(id) {
     let payments = getData('payments');
     const payment = payments.find(p => p.id === id);
     if (payment) {
@@ -248,18 +254,18 @@ function togglePaymentStatus(id) {
         saveData('payments', payments);
         loadPayments();
     }
-}
+};
 
-function deletePayment(id) {
+window.deletePayment = function(id) {
     if (confirm('Bu ödeme kaydını silmek istediğinize emin misiniz?')) {
         let payments = getData('payments');
         payments = payments.filter(p => p.id !== id);
         saveData('payments', payments);
         loadPayments();
     }
-}
+};
 
-function openPaymentModal() {
+window.openPaymentModal = function() {
     const studentName = prompt("Öğrenci Adı Soyadı:");
     const amount = prompt("Tutar (TL):");
     const date = prompt("Tarih (YYYY-AA-GG):", new Date().toISOString().split('T')[0]);
@@ -271,8 +277,9 @@ function openPaymentModal() {
         saveData('payments', payments);
         loadPayments();
     }
-}
+};
 
+// Giriş Formu (İpuçları / Placeholder Temizlendi)
 function showLoginForm() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -282,11 +289,11 @@ function showLoginForm() {
                 <p>Lütfen giriş yapın</p>
                 <div class="form-group">
                     <label>Kullanıcı Adı</label>
-                    <input type="text" name="username" required placeholder="admin / ogretmen / ogrenci">
+                    <input type="text" id="login-username" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label>Şifre</label>
-                    <input type="password" name="password" required placeholder="123">
+                    <input type="password" id="login-password" required autocomplete="off">
                 </div>
                 <button type="submit" class="btn-submit">Giriş Yap</button>
             </form>
