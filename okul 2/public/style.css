@@ -103,3 +103,25 @@ tr:hover td{background:var(--panel2)}
   .side-foot{border:none;padding:0;display:flex;gap:8px}
   .side-foot .btn-block{width:auto;margin:0}
 }
+/* ---- Ã–DEME SAYFASI Ã–ZEL STÄ°LLERÄ° ---- */
+.pay-cards .card {
+  border-left: 4px solid var(--line);
+}
+.pay-card-ok {
+  border-left-color: var(--ok) !important;
+}
+.pay-card-warn {
+  border-left-color: var(--warn) !important;
+}
+.pay-card-err {
+  border-left-color: var(--err) !important;
+}
+
+/* ---- DERS PROGRAMI EYLEM BUTONLARI ---- */
+.sched-slot {
+  align-items: center;
+}
+.sched-actions {
+  display: flex;
+  gap: 4px;
+}
