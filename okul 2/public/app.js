@@ -458,14 +458,23 @@ function payAddModal() {
 }
 
 function payDetailModal(pid) {
-  const p = (STATE.payments || []).find(x => x.id === pid); if (!p) return;
+  const p = (STATE.payments || []).find(x => x.id === pid); 
+  if (!p) return;
+
   const list = (p.odemeler || []).map((o, i) =>
-    `<div class="sched-slot"><span>${esc(o.tarih || '-')}</span><b>${money(o.miktar)}</b>
-       <button class="btn btn-sm btn-danger" data-rmpay="${i}">Sil</button></div>`).join('')
+    `<div class="sched-slot">
+       <span>${esc(o.tarih || '-')}</span>
+       <b>${money(o.miktar)}</b>
+       <button class="btn btn-sm btn-danger" data-rmpay="${i}">Sil</button>
+     </div>`).join('')
     || '<div class="empty">Henüz tahsilat yok</div>';
 
-  const bodyHtml = `<div class="cards" style="margin-bottom:14px">
-      ${card('Ödenecek', money(p.odenecek))}${card('Ödenen', money(p.odenen))}${card('Kalan', money(p.kalan))}</div>
+  const bodyHtml = `
+    <div class="cards" style="margin-bottom:14px">
+      ${card('Ödenecek', money(p.odenecek))}
+      ${card('Ödenen', money(p.odenen))}
+      ${card('Kalan', money(p.kalan))}
+    </div>
     <div class="panel" style="padding:12px">
       <div class="panel-head"><h3 style="font-size:.95rem">Tahsilat Geçmişi</h3></div>
       <div class="sched" id="payInstList">${list}</div>
@@ -482,9 +491,10 @@ function payDetailModal(pid) {
       <button class="btn btn-block" id="saveDue">Ücreti Kaydet</button>
     </div>`;
 
+  // 1. Önce Modal'ı açıp HTML'i çiziyoruz
   openModal('Ödeme Detayı – ' + esc(p.isim || p.sheet), bodyHtml);
 
-  // Tahsilat Silme Butonları
+  // 2. Buton tıklama olaylarını bağlıyoruz
   const instList = $('#payInstList');
   if (instList) {
     instList.querySelectorAll('[data-rmpay]').forEach(btn => {
