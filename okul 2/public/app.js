@@ -468,7 +468,7 @@ function payDetailModal(pid) {
       ${card('Ödenecek', money(p.odenecek))}${card('Ödenen', money(p.odenen))}${card('Kalan', money(p.kalan))}</div>
     <div class="panel" style="padding:12px">
       <div class="panel-head"><h3 style="font-size:.95rem">Tahsilat Geçmişi</h3></div>
-      <div class="sched">${list}</div>
+      <div class="sched" id="payInstList">${list}</div>
     </div>
     <div class="panel" style="padding:12px;margin-top:12px">
       <div class="panel-head"><h3 style="font-size:.95rem">Yeni Tahsilat Ekle</h3></div>
@@ -483,6 +483,25 @@ function payDetailModal(pid) {
     </div>`;
 
   openModal('Ödeme Detayı – ' + esc(p.isim || p.sheet), bodyHtml);
+
+  // Tahsilat Silme Butonları
+  const instList = $('#payInstList');
+  if (instList) {
+    instList.querySelectorAll('[data-rmpay]').forEach(btn => {
+      btn.onclick = async () => {
+        const index = Number(btn.dataset.rmpay);
+        try {
+          await mutate('deletePaymentInstallment', { paymentId: pid, index });
+          toast('Tahsilat silindi');
+          closeModal();
+          await refresh();
+          payDetailModal(pid);
+        } catch (e) {
+          toast(e.message, 'err');
+        }
+      };
+    });
+  }
 
   const addInstBtn = $('#addInst');
   if (addInstBtn) {
@@ -512,5 +531,19 @@ function payDetailModal(pid) {
         await refresh();
         payDetailModal(pid);
       } catch (e) {
-        toast(e.
-      } 
+        toast(e.message, 'err');
+      }
+    };
+  }
+}
+
+async function payDelete(pid) {
+  if (!confirm('Bu ödeme kaydını silmek istediğinize emin misiniz?')) return;
+  try {
+    await mutate('deletePayment', { paymentId: pid });
+    toast('Ödeme kaydı silindi');
+    go('pay');
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
