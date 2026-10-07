@@ -126,6 +126,26 @@ tr:hover td{background:var(--panel2)}
 .pay-actions{display:flex;gap:8px}
 .pay-actions .btn{flex:1}
 
+/* ---- ROSTER (toplu giriş listesi) ---- */
+.roster table{font-size:.9rem}
+.roster td{padding:7px 10px}
+.roster input,.roster select{padding:7px 9px;font-size:.9rem}
+.roster tbody tr:hover td{background:var(--panel2)}
+
+/* ---- PERF (ders bazlı başarı) ---- */
+.perf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.perf-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px;transition:.15s}
+.perf-card:hover{border-color:var(--acc);transform:translateY(-2px)}
+.perf-head h4{font-size:1rem}
+.perf-row{display:flex;gap:12px}
+.perf-metric{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.perf-label{font-size:.72rem;color:var(--muted)}
+.perf-big{font-size:1.5rem;font-weight:700}
+.perf-big.ok{color:var(--ok)} .perf-big.warn{color:var(--warn)} .perf-big.err{color:var(--err)}
+.perf-sub{font-size:.72rem;color:var(--muted)}
+.perf-foot{font-size:.8rem;color:var(--muted)}
+.perf-foot b{color:var(--txt)} .perf-foot .ok-t{color:var(--ok)} .perf-foot .err-t{color:var(--err)}
+
 /* ---- TABS ---- */
 .tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .tabs .tab{background:none;border:none;color:var(--muted);font-weight:600;font-size:.92rem;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}

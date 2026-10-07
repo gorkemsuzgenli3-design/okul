@@ -76,9 +76,9 @@ async function boot(){
 }
 function buildNav(){
   const menus={
-    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['att','Devamsızlık'],['sched','Ders Programları'],['pay','Ödemeler'],['audit','İşlem Kayıtları']],
-    teacher:[['tgenel','Panelim'],['tgive','Ödev Ver'],['thw','Ödev Sonuçları'],['texam','Sınav Notları'],['tatt','Devamsızlık'],['tsched','Programım']],
-    parent:[['pchild','Çocuğum'],['psched','Ders Programı'],['phw','Ödev Sonuçları'],['passign','Verilen Ödevler'],['pexam','Sınav Notları'],['patt','Devamsızlık']]
+    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['perf','Başarı Durumu'],['att','Devamsızlık'],['sched','Ders Programları'],['pay','Ödemeler'],['audit','İşlem Kayıtları']],
+    teacher:[['tgenel','Panelim'],['tgive','Ödev Ver'],['thw','Ödev Sonuçları'],['texam','Sınav Notları'],['tperf','Başarı Durumu'],['tatt','Devamsızlık'],['tsched','Programım']],
+    parent:[['pchild','Çocuğum'],['psched','Ders Programı'],['phw','Ödev Sonuçları'],['passign','Verilen Ödevler'],['pexam','Sınav Notları'],['pperf','Başarı Durumu'],['patt','Devamsızlık']]
   };
   const items=menus[ME.role]||[];
   $('#nav').innerHTML=items.map(([k,t])=>`<a data-p="${k}">${t}</a>`).join('');
@@ -117,7 +117,104 @@ function attBadge(s){
   if(s==='izinli') return '<span class="badge acc">İzinli</span>';
   return '<span class="badge err">Gelmedi</span>';
 }
+/* ---- Toplu giriş (sınıf listesi) yardımcıları ---- */
+function rosterStatusTable(students, idp){
+  if(!students.length) return '<div class="empty">Bu sınıfta öğrenci yok</div>';
+  const rows=students.map((s,i)=>`<tr>
+    <td>${i+1}</td><td><b>${esc(s.name)}</b></td>
+    <td><select class="${idp}-st" data-id="${s.id}">
+      <option value="geldi">Geldi</option><option value="yok">Gelmedi</option>
+      <option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></td>
+    <td><input class="${idp}-nt" data-id="${s.id}" placeholder="not (isteğe bağlı)"></td></tr>`).join('');
+  return `<div class="table-wrap roster"><table><thead><tr><th>#</th><th>Öğrenci</th><th>Durum</th><th>Not</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function collectStatus(idp){
+  const recs=[];
+  document.querySelectorAll('.'+idp+'-st').forEach(sel=>{
+    if(sel.value!=='geldi'){ const id=sel.dataset.id;
+      const nt=document.querySelector('.'+idp+'-nt[data-id="'+id+'"]');
+      recs.push({studentId:id, status:sel.value, note:nt?nt.value.trim():''}); }
+  });
+  return recs;
+}
+function rosterGradeTable(students, idp, cols){
+  if(!students.length) return '<div class="empty">Bu sınıfta öğrenci yok</div>';
+  const head=cols.map(c=>`<th>${esc(c.label)}</th>`).join('');
+  const rows=students.map((s,i)=>`<tr><td>${i+1}</td><td><b>${esc(s.name)}</b></td>
+    ${cols.map(c=>`<td><input class="${idp}-${c.key}" data-id="${s.id}" type="${c.type||'text'}" ${c.min!=null?'min="'+c.min+'"':''} style="max-width:120px"></td>`).join('')}</tr>`).join('');
+  return `<div class="table-wrap roster"><table><thead><tr><th>#</th><th>Öğrenci</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
 function studentsOfClass(cid){ return (STATE.students||[]).filter(s=>s.classId===cid); }
+/* ---- Başarı / ortalama yardımcıları ---- */
+function num(v){ if(v==null||v==='') return null; const n=parseFloat(String(v).replace(',','.')); return isNaN(n)?null:n; }
+function gradeCls(v){ return v==null?'' : v>=85?'ok' : v>=50?'warn':'err'; }
+function perfBySubject(exams, homeworks){
+  const map={};
+  const get=k=>(map[k]=map[k]||{subject:k, scores:[], examCount:0, d:0,y:0,b:0, hwCount:0});
+  (exams||[]).forEach(e=>{ const r=get(e.subjectName||'—'); r.examCount++; const n=num(e.score); if(n!=null) r.scores.push(n); });
+  (homeworks||[]).forEach(h=>{ const r=get(h.subjectName||'—'); r.hwCount++; r.d+=num(h.dogru)||0; r.y+=num(h.yanlis)||0; r.b+=num(h.bos)||0; });
+  return Object.values(map).map(r=>{
+    const examAvg = r.scores.length ? r.scores.reduce((a,b)=>a+b,0)/r.scores.length : null;
+    const answered = r.d+r.y;
+    const hwRate = answered>0 ? Math.round(r.d/answered*100) : null;
+    return Object.assign(r,{examAvg,hwRate});
+  }).sort((a,b)=>a.subject.localeCompare(b.subject,'tr'));
+}
+function perfCards(rows){
+  if(!rows.length) return '<div class="empty">Henüz sınav notu veya ödev kaydı yok</div>';
+  return `<div class="perf-grid">${rows.map(r=>{
+    const avg = r.examAvg!=null ? r.examAvg.toFixed(1) : '—';
+    const rate = r.hwRate;
+    return `<div class="perf-card">
+      <div class="perf-head"><h4>${esc(r.subject)}</h4></div>
+      <div class="perf-row">
+        <div class="perf-metric"><span class="perf-label">Sınav Ort.</span>
+          <span class="perf-big ${gradeCls(r.examAvg)}">${avg}</span>
+          <span class="perf-sub">${r.examCount} sınav</span></div>
+        <div class="perf-metric"><span class="perf-label">Ödev Başarısı</span>
+          <span class="perf-big ${gradeCls(rate)}">${rate!=null?('%'+rate):'—'}</span>
+          <span class="perf-sub">${r.hwCount} ödev</span></div>
+      </div>
+      <div class="progress"><div class="progress-bar ${rate!=null?gradeCls(rate):'ok'}" style="width:${rate!=null?rate:0}%"></div></div>
+      <div class="perf-foot">Doğru <b class="ok-t">${r.d}</b> · Yanlış <b class="err-t">${r.y}</b> · Boş <b>${r.b}</b></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function examAvgSummary(exams){
+  const map={};
+  (exams||[]).forEach(e=>{ const n=num(e.score); if(n==null) return; const k=e.subjectName||'—'; (map[k]=map[k]||[]).push(n); });
+  const keys=Object.keys(map); if(!keys.length) return '';
+  const all=[].concat(...keys.map(k=>map[k]));
+  const overall=all.reduce((a,b)=>a+b,0)/all.length;
+  const cards=keys.sort((a,b)=>a.localeCompare(b,'tr')).map(k=>{
+    const arr=map[k]; const avg=arr.reduce((x,y)=>x+y,0)/arr.length;
+    return card(k+' Ort.', avg.toFixed(1));
+  }).join('');
+  return `<div class="cards">${card('Genel Ortalama', overall.toFixed(1))}${cards}</div>`;
+}
+/* y&ouml;netici/öğretmen: sınıf+öğrenci seçerek ders bazında başarı */
+function perfSelectorView(classes){
+  return `<div class="panel"><div class="panel-head"><h3>Öğrenci Başarı Durumu</h3></div>
+    <p class="muted" style="margin-bottom:12px">Sınıf ve öğrenci seçin; sınav ortalamaları ve ödev başarısı ders ders listelenir.</p>
+    <div class="row">
+      <div class="field"><label>Sınıf</label><select id="pfCls">${opts(classes,'','id','name','Sınıf seçin')}</select></div>
+      <div class="field"><label>Öğrenci</label><select id="pfStu"><option value="">Önce sınıf seçin</option></select></div>
+    </div></div>
+    <div id="pfBody"><div class="empty">Öğrenci seçince ders bazında başarı burada görünür</div></div>`;
+}
+function perfSelectorWire(){
+  const cs=$('#pfCls'), ss=$('#pfStu'); if(!cs) return;
+  cs.onchange=()=>{ const list=studentsOfClass(cs.value);
+    ss.innerHTML=list.length?opts(list,'','id','name','Öğrenci seçin'):'<option value="">Öğrenci yok</option>';
+    $('#pfBody').innerHTML='<div class="empty">Öğrenci seçin</div>'; };
+  ss.onchange=()=>{ const sid=ss.value;
+    if(!sid){ $('#pfBody').innerHTML='<div class="empty">Öğrenci seçin</div>'; return; }
+    const ex=(STATE.exams||[]).filter(e=>e.studentId===sid);
+    const hw=((STATE.grades||{}).homework||[]).filter(h=>h.studentId===sid);
+    const name=(studentsOfClass(cs.value).find(s=>s.id===sid)||{}).name||'';
+    $('#pfBody').innerHTML = `<div class="panel-head" style="margin-bottom:14px"><h3>${esc(name)} – Ders Bazında Başarı</h3></div>`+perfCards(perfBySubject(ex,hw));
+  };
+}
 function myClassIds(){ const set=new Set(); (ME.teach||[]).forEach(t=>t.classIds.forEach(c=>set.add(c))); return [...set]; }
 function myClasses(){ const ids=new Set(myClassIds()); return (STATE.classes||[]).filter(c=>ids.has(c.id)); }
 function schedHTML(obj){
@@ -279,43 +376,44 @@ VIEWS.assign=()=>{
 };
 VIEWS.exams=()=>{
   const rows=(STATE.exams||[]).map(e=>[esc(e.date),esc(e.studentName),esc(e.className),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sınav','Not'],rows)}</div>`;
+  return `${examAvgSummary(STATE.exams)}<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sınav','Not'],rows)}</div>`;
 };
+VIEWS.perf=()=>perfSelectorView(STATE.classes||[]);
+wire.perf=perfSelectorWire;
 /* ---- ADMIN: Devamsızlık ---- */
 VIEWS.att=()=>{
   const all=STATE.attendance||[];
   const stu=all.filter(a=>a.kind==='student').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tea=all.filter(a=>a.kind==='teacher').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const cnt=s=>s.length;
   const stuRows=stu.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
     `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
   const teaRows=tea.map(a=>[esc(a.date),esc(a.who),attBadge(a.status),esc(a.note||''),
     `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
-  const durumSel=`<select id="astat"><option value="yok">Gelmedi</option><option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select>`;
+  const teaList=(STATE.teachers||[]).map((t,i)=>`<tr><td>${i+1}</td><td><b>${esc(t.name)}</b></td>
+    <td><select class="ta-st" data-id="${t.id}"><option value="geldi">Geldi</option><option value="yok">Gelmedi</option>
+      <option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></td>
+    <td><input class="ta-nt" data-id="${t.id}" placeholder="not (isteğe bağlı)"></td></tr>`).join('');
   return `<div class="cards">
-      ${card('Öğrenci Devamsızlığı', cnt(stu))}
-      ${card('Öğretmen Devamsızlığı', cnt(tea))}</div>
+      ${card('Öğrenci Devamsızlığı', stu.length)}
+      ${card('Öğretmen Devamsızlığı', tea.length)}</div>
     <div class="tabs"><button class="tab active" data-tab="stu">Öğrenci Devamsızlıkları</button>
       <button class="tab" data-tab="tea">Öğretmen Devamsızlıkları</button></div>
     <div data-pane="stu">
-      <div class="panel"><div class="panel-head"><h3>Öğrenci Devamsızlığı Ekle</h3></div>
+      <div class="panel"><div class="panel-head"><h3>Sınıf Yoklaması Al</h3></div>
         <div class="row">
-          <div class="field"><label>Sınıf</label><select id="acls">${opts(STATE.classes,'','id','name','Sınıf seçin')}</select></div>
-          <div class="field"><label>Öğrenci</label><select id="astu"><option value="">Önce sınıf seçin</option></select></div>
-          <div class="field"><label>Tarih</label><input id="adate" type="date"></div>
-          <div class="field"><label>Durum</label>${durumSel}</div>
-          <div class="field" style="flex:2"><label>Not (isteğe bağlı)</label><input id="anote" placeholder="örn. Rahatsızlık"></div>
-          <button class="btn btn-primary" id="aSave">Kaydet</button></div></div>
+          <div class="field"><label>Sınıf</label><select id="asCls">${opts(STATE.classes,'','id','name','Sınıf seçin')}</select></div>
+          <div class="field"><label>Tarih</label><input id="asDate" type="date"></div></div>
+        <div id="asRoster" style="margin-top:14px"><div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div></div>
+        <button class="btn btn-primary" id="asSave" style="margin-top:14px;display:none">Yoklamayı Kaydet</button>
+        <p class="muted" style="margin-top:8px">Yalnızca “Gelmedi / Geç / İzinli” seçilenler kaydedilir. “Geldi” kalanlar için kayıt oluşmaz.</p></div>
       <div class="panel"><div class="panel-head"><h3>Öğrenci Devamsızlık Kayıtları</h3></div>
         ${tbl(['Tarih','Öğrenci','Sınıf','Durum','Not','İşlem'],stuRows)}</div></div>
     <div data-pane="tea" class="hidden">
-      <div class="panel"><div class="panel-head"><h3>Öğretmen Devamsızlığı Ekle</h3></div>
-        <div class="row">
-          <div class="field"><label>Öğretmen</label><select id="atea">${opts(STATE.teachers||[],'','id','name','Öğretmen seçin')}</select></div>
-          <div class="field"><label>Tarih</label><input id="atdate" type="date"></div>
-          <div class="field"><label>Durum</label><select id="atstat"><option value="yok">Gelmedi</option><option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></div>
-          <div class="field" style="flex:2"><label>Not (isteğe bağlı)</label><input id="atnote"></div>
-          <button class="btn btn-primary" id="atSave">Kaydet</button></div></div>
+      <div class="panel"><div class="panel-head"><h3>Öğretmen Yoklaması Al</h3></div>
+        <div class="row"><div class="field"><label>Tarih</label><input id="atDate" type="date"></div></div>
+        <div class="table-wrap roster" style="margin-top:14px"><table><thead><tr><th>#</th><th>Öğretmen</th><th>Durum</th><th>Not</th></tr></thead>
+          <tbody>${teaList||'<tr><td colspan="4" class="muted">Öğretmen yok</td></tr>'}</tbody></table></div>
+        <button class="btn btn-primary" id="atSave" style="margin-top:14px">Kaydet</button></div>
       <div class="panel"><div class="panel-head"><h3>Öğretmen Devamsızlık Kayıtları</h3></div>
         ${tbl(['Tarih','Öğretmen','Durum','Not','İşlem'],teaRows)}</div></div>`;
 };
@@ -324,18 +422,25 @@ wire.att=()=>{
     $('#content').querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
     $('#content').querySelectorAll('[data-pane]').forEach(p=>p.classList.toggle('hidden',p.dataset.pane!==t.dataset.tab));
   });
-  const cs=$('#acls'); if(cs) cs.onchange=()=>{ const list=studentsOfClass(cs.value);
-    $('#astu').innerHTML = list.length?opts(list,'','id','name','Öğrenci seçin'):'<option value="">Öğrenci yok</option>'; };
-  const sv=$('#aSave'); if(sv) sv.onclick=async()=>{
-    if(!$('#astu').value){ toast('Öğrenci seçin','err'); return; }
-    if(!$('#adate').value){ toast('Tarih seçin','err'); return; }
-    try{ await mutate('addAttendance',{studentId:$('#astu').value, date:$('#adate').value, status:$('#astat').value, note:$('#anote').value.trim()});
-      toast('Devamsızlık eklendi'); go('att'); }catch(e){ toast(e.message,'err'); } };
+  const cs=$('#asCls'); if(cs) cs.onchange=()=>{
+    const list=studentsOfClass(cs.value);
+    $('#asRoster').innerHTML = cs.value ? rosterStatusTable(list,'as') : '<div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div>';
+    $('#asSave').style.display = (cs.value && list.length) ? '' : 'none';
+  };
+  const sv=$('#asSave'); if(sv) sv.onclick=async()=>{
+    if(!$('#asDate').value){ toast('Tarih seçin','err'); return; }
+    const records=collectStatus('as');
+    if(!records.length){ toast('Devamsız işaretlenen öğrenci yok','err'); return; }
+    try{ const r=await mutate('addAttendanceBulk',{date:$('#asDate').value, records});
+      toast((r.added||0)+' kayıt eklendi'); go('att'); }catch(e){ toast(e.message,'err'); } };
   const tsv=$('#atSave'); if(tsv) tsv.onclick=async()=>{
-    if(!$('#atea').value){ toast('Öğretmen seçin','err'); return; }
-    if(!$('#atdate').value){ toast('Tarih seçin','err'); return; }
-    try{ await mutate('addTeacherAttendance',{teacherId:$('#atea').value, date:$('#atdate').value, status:$('#atstat').value, note:$('#atnote').value.trim()});
-      toast('Devamsızlık eklendi'); go('att');
+    if(!$('#atDate').value){ toast('Tarih seçin','err'); return; }
+    const records=[];
+    $('#content').querySelectorAll('.ta-st').forEach(sel=>{ if(sel.value!=='geldi'){ const id=sel.dataset.id;
+      const nt=$('#content').querySelector('.ta-nt[data-id="'+id+'"]'); records.push({teacherId:id,status:sel.value,note:nt?nt.value.trim():''}); } });
+    if(!records.length){ toast('Devamsız işaretlenen öğretmen yok','err'); return; }
+    try{ const r=await mutate('addTeacherAttendanceBulk',{date:$('#atDate').value, records});
+      toast((r.added||0)+' kayıt eklendi'); go('att');
       $('#content').querySelector('.tab[data-tab="tea"]').click(); }catch(e){ toast(e.message,'err'); } };
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
@@ -405,7 +510,9 @@ VIEWS.audit=()=>{
     addPaymentRecord:'Ödeme kaydı ekleme',addPayment:'Tahsilat ekleme',setPaymentDue:'Ücret düzenleme',
     deletePayment:'Ödeme kaydı silme',deletePaymentInstallment:'Tahsilat silme',
     addSchedSheet:'Program ekleme',deleteSchedSheet:'Program silme',setSchedSlot:'Ders ekleme/düzenleme',deleteSchedSlot:'Ders silme',
-    addAttendance:'Öğrenci devamsızlığı',addTeacherAttendance:'Öğretmen devamsızlığı',deleteAttendance:'Devamsızlık silme'};
+    addAttendance:'Öğrenci devamsızlığı',addTeacherAttendance:'Öğretmen devamsızlığı',deleteAttendance:'Devamsızlık silme',
+    addAttendanceBulk:'Toplu öğrenci yoklaması',addTeacherAttendanceBulk:'Toplu öğretmen yoklaması',
+    addHomeworkBulk:'Toplu ödev sonucu',addExamBulk:'Toplu sınav notu'};
   const rows=(STATE.audit||[]).map(a=>[
     esc((a.at||'').replace('T',' ').slice(0,19)), esc(a.by),
     esc(trAct[a.action]||a.action), esc(a.detail||'')]);
@@ -600,67 +707,98 @@ VIEWS.thw=()=>{
     [esc(h.date),esc(h.studentName),esc(h.className),esc(h.subjectName),
      `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`,
      `<button class="btn btn-sm btn-danger" data-dh="${h.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Ödev Sonucu Gir</h3></div>
-    <div class="row">${scsFields('h')}
-      <div class="field"><label>Tarih</label><input id="hdate" type="date"></div>
-      <div class="field"><label>Doğru</label><input id="hd" type="number"></div>
-      <div class="field"><label>Yanlış</label><input id="hy" type="number"></div>
-      <div class="field"><label>Boş</label><input id="hb" type="number"></div>
-      <button class="btn btn-primary" id="hsave">Kaydet</button></div></div>
+  return `<div class="panel"><div class="panel-head"><h3>Sınıf Ödev Sonuçları (Toplu)</h3></div>
+    <div class="row">
+      <div class="field"><label>Ders</label><select id="hwSub">${opts(STATE.subjects,'','id','name','Ders seçin')}</select></div>
+      <div class="field"><label>Sınıf</label><select id="hwCls">${opts(myClasses(),'','id','name','Sınıf seçin')}</select></div>
+      <div class="field"><label>Tarih</label><input id="hwDate" type="date"></div></div>
+    <div id="hwRoster" style="margin-top:14px"><div class="empty">Ders ve sınıf seçince öğrenci listesi burada çıkar</div></div>
+    <button class="btn btn-primary" id="hwSave" style="margin-top:14px;display:none">Hepsini Kaydet</button>
+    <p class="muted" style="margin-top:8px">Yalnızca en az bir değer (doğru/yanlış/boş) girilen öğrenciler kaydedilir.</p></div>
     <div class="panel"><div class="panel-head"><h3>Girilen Sonuçlar</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sonuç','İşlem'],rows)}</div>`;
 };
 wire.thw=()=>{
-  bindClassStudent('h');
-  $('#hsave').onclick=async()=>{ try{ await mutate('addHomework',{subjectId:$('#hsub').value,classId:$('#hcls').value,studentId:$('#hstu').value,
-    date:$('#hdate').value,dogru:$('#hd').value,yanlis:$('#hy').value,bos:$('#hb').value}); toast('Kaydedildi'); go('thw'); }catch(e){ toast(e.message,'err'); } };
+  const refresh=()=>{ const sid=$('#hwSub').value, cid=$('#hwCls').value;
+    const list = cid?studentsOfClass(cid):[];
+    $('#hwRoster').innerHTML = (sid&&cid) ? rosterGradeTable(list,'hw',[{label:'Doğru',key:'d',type:'number',min:0},{label:'Yanlış',key:'y',type:'number',min:0},{label:'Boş',key:'b',type:'number',min:0}]) : '<div class="empty">Ders ve sınıf seçince öğrenci listesi burada çıkar</div>';
+    $('#hwSave').style.display = (sid&&cid&&list.length) ? '' : 'none';
+  };
+  $('#hwSub').onchange=refresh; $('#hwCls').onchange=refresh;
+  $('#hwSave').onclick=async()=>{
+    if(!$('#hwDate').value){ toast('Tarih seçin','err'); return; }
+    const records=[];
+    document.querySelectorAll('.hw-d').forEach(inp=>{ const id=inp.dataset.id;
+      const d=inp.value, y=(document.querySelector('.hw-y[data-id="'+id+'"]')||{}).value||'', b=(document.querySelector('.hw-b[data-id="'+id+'"]')||{}).value||'';
+      if(d!==''||y!==''||b!=='') records.push({studentId:id,dogru:d,yanlis:y,bos:b}); });
+    if(!records.length){ toast('Değer girilen öğrenci yok','err'); return; }
+    try{ const r=await mutate('addHomeworkBulk',{subjectId:$('#hwSub').value,classId:$('#hwCls').value,date:$('#hwDate').value,records});
+      toast((r.added||0)+' sonuç kaydedildi'); go('thw'); }catch(e){ toast(e.message,'err'); } };
   $('#content').querySelectorAll('[data-dh]').forEach(b=>b.onclick=async()=>{ try{ await mutate('deleteHomework',{id:b.dataset.dh}); toast('Silindi'); go('thw'); }catch(e){ toast(e.message,'err'); } });
 };
 
 VIEWS.texam=()=>{
   const rows=(STATE.exams||[]).slice().reverse().map(e=>[esc(e.date),esc(e.studentName),esc(e.className),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`,
     `<button class="btn btn-sm btn-danger" data-de="${e.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notu Gir</h3></div>
-    <div class="row">${scsFields('e')}
-      <div class="field"><label>Sınav Adı</label><input id="ename"></div>
-      <div class="field"><label>Not</label><input id="escore"></div>
-      <div class="field"><label>Tarih</label><input id="edate" type="date"></div>
-      <button class="btn btn-primary" id="esave">Kaydet</button></div></div>
+  return `${examAvgSummary(STATE.exams)}<div class="panel"><div class="panel-head"><h3>Sınıf Sınav Notları (Toplu)</h3></div>
+    <div class="row">
+      <div class="field"><label>Ders</label><select id="exSub">${opts(STATE.subjects,'','id','name','Ders seçin')}</select></div>
+      <div class="field"><label>Sınıf</label><select id="exCls">${opts(myClasses(),'','id','name','Sınıf seçin')}</select></div>
+      <div class="field"><label>Sınav Adı</label><input id="exName" placeholder="örn. 1. Yazılı"></div>
+      <div class="field"><label>Tarih</label><input id="exDate" type="date"></div></div>
+    <div id="exRoster" style="margin-top:14px"><div class="empty">Ders ve sınıf seçince öğrenci listesi burada çıkar</div></div>
+    <button class="btn btn-primary" id="exSave" style="margin-top:14px;display:none">Hepsini Kaydet</button>
+    <p class="muted" style="margin-top:8px">Yalnızca not girilen öğrenciler kaydedilir.</p></div>
     <div class="panel"><div class="panel-head"><h3>Girilen Notlar</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sınav','Not','İşlem'],rows)}</div>`;
 };
 wire.texam=()=>{
-  bindClassStudent('e');
-  $('#esave').onclick=async()=>{ try{ await mutate('addExam',{subjectId:$('#esub').value,classId:$('#ecls').value,studentId:$('#estu').value,
-    name:$('#ename').value.trim(),score:$('#escore').value,date:$('#edate').value}); toast('Kaydedildi'); go('texam'); }catch(e){ toast(e.message,'err'); } };
+  const refresh=()=>{ const sid=$('#exSub').value, cid=$('#exCls').value;
+    const list = cid?studentsOfClass(cid):[];
+    $('#exRoster').innerHTML = (sid&&cid) ? rosterGradeTable(list,'ex',[{label:'Not',key:'s',type:'text'}]) : '<div class="empty">Ders ve sınıf seçince öğrenci listesi burada çıkar</div>';
+    $('#exSave').style.display = (sid&&cid&&list.length) ? '' : 'none';
+  };
+  $('#exSub').onchange=refresh; $('#exCls').onchange=refresh;
+  $('#exSave').onclick=async()=>{
+    if(!$('#exName').value.trim()){ toast('Sınav adı girin','err'); return; }
+    const records=[];
+    document.querySelectorAll('.ex-s').forEach(inp=>{ if(inp.value!=='') records.push({studentId:inp.dataset.id,score:inp.value}); });
+    if(!records.length){ toast('Not girilen öğrenci yok','err'); return; }
+    try{ const r=await mutate('addExamBulk',{subjectId:$('#exSub').value,classId:$('#exCls').value,name:$('#exName').value.trim(),date:$('#exDate').value,records});
+      toast((r.added||0)+' not kaydedildi'); go('texam'); }catch(e){ toast(e.message,'err'); } };
   $('#content').querySelectorAll('[data-de]').forEach(b=>b.onclick=async()=>{ try{ await mutate('deleteExam',{id:b.dataset.de}); toast('Silindi'); go('texam'); }catch(e){ toast(e.message,'err'); } });
 };
 VIEWS.tatt=()=>{
   const recs=(STATE.attendance||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const rows=recs.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
     `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Öğrenci Devamsızlığı Ekle</h3></div>
+  return `<div class="panel"><div class="panel-head"><h3>Sınıf Yoklaması Al</h3></div>
     <div class="row">
-      <div class="field"><label>Sınıf</label><select id="tacls">${opts(myClasses(),'','id','name','Sınıf seçin')}</select></div>
-      <div class="field"><label>Öğrenci</label><select id="tastu"><option value="">Önce sınıf seçin</option></select></div>
-      <div class="field"><label>Tarih</label><input id="tadate" type="date"></div>
-      <div class="field"><label>Durum</label><select id="tastat"><option value="yok">Gelmedi</option><option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></div>
-      <div class="field" style="flex:2"><label>Not (isteğe bağlı)</label><input id="tanote"></div>
-      <button class="btn btn-primary" id="taSave">Kaydet</button></div></div>
+      <div class="field"><label>Sınıf</label><select id="taCls">${opts(myClasses(),'','id','name','Sınıf seçin')}</select></div>
+      <div class="field"><label>Tarih</label><input id="taDate" type="date"></div></div>
+    <div id="taRoster" style="margin-top:14px"><div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div></div>
+    <button class="btn btn-primary" id="taSave" style="margin-top:14px;display:none">Yoklamayı Kaydet</button>
+    <p class="muted" style="margin-top:8px">Yalnızca “Gelmedi / Geç / İzinli” seçilenler kaydedilir.</p></div>
     <div class="panel"><div class="panel-head"><h3>Devamsızlık Kayıtları</h3></div>
       ${tbl(['Tarih','Öğrenci','Sınıf','Durum','Not','İşlem'],rows)}</div>`;
 };
 wire.tatt=()=>{
-  const cs=$('#tacls'); if(cs) cs.onchange=()=>{ const list=studentsOfClass(cs.value);
-    $('#tastu').innerHTML = list.length?opts(list,'','id','name','Öğrenci seçin'):'<option value="">Öğrenci yok</option>'; };
+  const cs=$('#taCls'); if(cs) cs.onchange=()=>{
+    const list=studentsOfClass(cs.value);
+    $('#taRoster').innerHTML = cs.value ? rosterStatusTable(list,'ta') : '<div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div>';
+    $('#taSave').style.display = (cs.value && list.length) ? '' : 'none';
+  };
   const sv=$('#taSave'); if(sv) sv.onclick=async()=>{
-    if(!$('#tastu').value){ toast('Öğrenci seçin','err'); return; }
-    if(!$('#tadate').value){ toast('Tarih seçin','err'); return; }
-    try{ await mutate('addAttendance',{studentId:$('#tastu').value, date:$('#tadate').value, status:$('#tastat').value, note:$('#tanote').value.trim()});
-      toast('Devamsızlık eklendi'); go('tatt'); }catch(e){ toast(e.message,'err'); } };
+    if(!$('#taDate').value){ toast('Tarih seçin','err'); return; }
+    const records=collectStatus('ta');
+    if(!records.length){ toast('Devamsız işaretlenen öğrenci yok','err'); return; }
+    try{ const r=await mutate('addAttendanceBulk',{date:$('#taDate').value, records});
+      toast((r.added||0)+' kayıt eklendi'); go('tatt'); }catch(e){ toast(e.message,'err'); } };
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
     try{ await mutate('deleteAttendance',{id:b.dataset.rmatt}); toast('Silindi'); go('tatt'); }catch(e){ toast(e.message,'err'); } });
 };
 VIEWS.tsched=()=>schedHTML(STATE.schedule);
+VIEWS.tperf=()=>perfSelectorView(myClasses());
+wire.tperf=perfSelectorWire;
 
 /* ================= VELİ ================= */
 VIEWS.pchild=()=>{
@@ -683,7 +821,13 @@ VIEWS.passign=()=>{
 };
 VIEWS.pexam=()=>{
   const rows=(STATE.exams||[]).slice().reverse().map(e=>[esc(e.date),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Ders','Sınav','Not'],rows)}</div>`;
+  return `${examAvgSummary(STATE.exams)}<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Ders','Sınav','Not'],rows)}</div>`;
+};
+VIEWS.pperf=()=>{
+  const c=STATE.child;
+  const rows=perfBySubject(STATE.exams, (STATE.grades||{}).homework||[]);
+  return `<div class="panel"><div class="panel-head"><h3>${esc(c?c.name:'Çocuğum')} – Ders Bazında Başarı</h3></div>
+    <p class="muted">Her ders için sınav ortalaması ve ödev başarı oranı aşağıda gösterilmektedir.</p></div>`+perfCards(rows);
 };
 VIEWS.patt=()=>{
   const recs=(STATE.attendance||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
