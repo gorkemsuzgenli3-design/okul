@@ -5,173 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avni Tokur Eğitim Paneli</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
         }
-        body {
-            background-color: #f4f6f9;
-            color: #333;
-            min-height: 100vh;
-        }
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .login-card {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        .login-card h2 {
-            margin-bottom: 8px;
-            color: #1a252f;
-            font-size: 24px;
-        }
-        .login-card p {
-            color: #7f8c8d;
-            margin-bottom: 24px;
-            font-size: 14px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 14px;
-            color: #2c3e50;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #dcdfe6;
-            border-radius: 6px;
-            font-size: 15px;
-            outline: none;
-        }
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .navbar {
-            background-color: #1e293b;
-            color: white;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .container {
-            display: flex;
-            min-height: calc(100vh - 60px);
-        }
-        .sidebar {
-            width: 220px;
-            background: #ffffff;
-            border-right: 1px solid #e2e8f0;
-            padding: 20px 10px;
-        }
-        .content {
-            flex: 1;
-            padding: 30px;
-        }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-        .data-table th, .data-table td {
-            padding: 14px 18px;
-            text-align: left;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .data-table th {
-            background-color: #f8fafc;
-        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); min-height: 100vh; }
+
+        /* Login Screen */
+        .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: var(--bg-card); padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); }
+        .login-card h2 { margin-bottom: 8px; font-size: 24px; color: var(--text-main); font-weight: 700; }
+        .login-card p { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
+        .form-group { margin-bottom: 18px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: var(--text-main); }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .btn { padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background-color: var(--primary); color: white; width: 100%; justify-content: center; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-danger { background-color: #fee2e2; color: var(--danger); }
+        .btn-danger:hover { background-color: #fecaca; }
+
+        /* Dashboard Layout */
+        .navbar { background-color: var(--bg-card); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .navbar h2 { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .layout { display: flex; min-height: calc(100vh - 65px); }
+        .sidebar { width: 240px; background: var(--bg-card); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 8px; }
+        .nav-btn { width: 100%; text-align: left; padding: 12px 16px; border-radius: 8px; background: transparent; border: none; color: var(--text-muted); font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        .nav-btn.active, .nav-btn:hover { background-color: #eff6ff; color: var(--primary); }
+        .content { flex: 1; padding: 32px; max-width: 1200px; }
+
+        /* Tables & Cards */
+        .panel-card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 24px; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .panel-title { font-size: 18px; font-weight: 700; }
+        
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .data-table th, .data-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .data-table th { background-color: #f8fafc; color: var(--text-muted); font-weight: 600; }
+        
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body>
 
+    <!-- Giriş Ekranı -->
     <div id="login-view" class="login-container">
         <div class="login-card">
             <h2>Avni Tokur Eğitim</h2>
-            <p>Lütfen bilgilerinizi girin</p>
+            <p>Yönetici Paneline Giriş Yapın</p>
             <div class="form-group">
-                <label for="username">Kullanıcı Adı</label>
+                <label>Kullanıcı Adı</label>
                 <input type="text" id="username" autocomplete="off">
             </div>
             <div class="form-group">
-                <label for="password">Şifre</label>
+                <label>Şifre</label>
                 <input type="password" id="password" autocomplete="off">
             </div>
-            <button type="button" id="login-btn" class="btn-submit">Giriş Yap</button>
+            <button type="button" id="login-btn" class="btn btn-primary">Giriş Yap</button>
         </div>
     </div>
 
+    <!-- Yönetim Paneli -->
     <div id="dashboard-view" style="display: none;">
         <header class="navbar">
-            <h2>Avni Tokur Eğitim Paneli</h2>
-            <button id="logout-btn" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">Çıkış Yap</button>
+            <h2>Avni Tokur Eğitim Yönetim Paneli</h2>
+            <button id="logout-btn" class="btn btn-danger">Çıkış Yap</button>
         </header>
 
-        <div class="container">
+        <div class="layout">
             <nav class="sidebar">
-                <p style="padding: 10px; font-weight: bold; color: #2563eb;">Ders Programı</p>
+                <button class="nav-btn active" data-tab="schedule-tab">📅 Ders Programı</button>
+                <button class="nav-btn" data-tab="payments-tab">💳 Ödeme Yönetimi</button>
             </nav>
+
             <main class="content">
-                <h3>Ders Programı Listesi</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Gün</th>
-                            <th>Saat</th>
-                            <th>Sınıf</th>
-                            <th>Ders</th>
-                            <th>Öğretmen</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Pazartesi</td>
-                            <td>09:00 - 10:30</td>
-                            <td>10-A</td>
-                            <td>Matematik</td>
-                            <td>Ahmet Yılmaz</td>
-                        </tr>
-                        <tr>
-                            <td>Salı</td>
-                            <td>10:45 - 12:15</td>
-                            <td>11-B</td>
-                            <td>Fizik</td>
-                            <td>Mehmet Kaya</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- Tab 1: Ders Programı -->
+                <section id="schedule-tab" class="tab-content active">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Yeni Ders Ekle</h3>
+                        </div>
+                        <div class="grid-form">
+                            <div class="form-group"><label>Gün</label><input type="text" id="sched-day" placeholder="Pazartesi"></div>
+                            <div class="form-group"><label>Saat</label><input type="text" id="sched-time" placeholder="09:00 - 10:30"></div>
+                            <div class="form-group"><label>Sınıf</label><input type="text" id="sched-class" placeholder="10-A"></div>
+                            <div class="form-group"><label>Ders</label><input type="text" id="sched-subject" placeholder="Matematik"></div>
+                            <div class="form-group"><label>Öğretmen</label><input type="text" id="sched-teacher" placeholder="Ahmet Yılmaz"></div>
+                        </div>
+                        <button id="add-schedule-btn" class="btn btn-primary" style="width: auto;">+ Dersi Programa Ekle</button>
+                    </div>
+
+                    <div class="panel-card">
+                        <div class="panel-header"><h3 class="panel-title">Haftalık Ders Programı</h3></div>
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Gün</th><th>Saat</th><th>Sınıf</th><th>Ders</th><th>Öğretmen</th><th>İşlem</th></tr>
+                            </thead>
+                            <tbody id="schedule-list"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Tab 2: Ödemeler -->
+                <section id="payments-tab" class="tab-content">
+                    <div class="panel-card">
+                        <div class="panel-header"><h3 class="panel-title">Öğrenci Ödeme Durumları</h3></div>
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Öğrenci Adı</th><th>Sınıf</th><th>Tutar</th><th>Durum</th><th>Güncelle</th></tr>
+                            </thead>
+                            <tbody id="payments-list"></tbody>
+                        </table>
+                    </div>
+                </section>
             </main>
         </div>
     </div>
-<script src="/script.js"></script>
-   
+
+    <script src="/script.js"></script>
+</body>
+</html>
