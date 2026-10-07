@@ -126,6 +126,12 @@ tr:hover td{background:var(--panel2)}
 .pay-actions{display:flex;gap:8px}
 .pay-actions .btn{flex:1}
 
+/* ---- ROSTER (toplu giriş listesi) ---- */
+.roster table{font-size:.9rem}
+.roster td{padding:7px 10px}
+.roster input,.roster select{padding:7px 9px;font-size:.9rem}
+.roster tbody tr:hover td{background:var(--panel2)}
+
 /* ---- TABS ---- */
 .tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .tabs .tab{background:none;border:none;color:var(--muted);font-weight:600;font-size:.92rem;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}

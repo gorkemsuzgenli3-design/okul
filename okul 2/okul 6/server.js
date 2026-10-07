@@ -390,6 +390,52 @@ function handleMutate(u, body){
       }
       DB.attendance=DB.attendance.filter(x=>x.id!==body.id); audit(u,'deleteAttendance',rec.id); return {ok:true}; }
 
+    /* ---- TOPLU GİRİŞ (sınıf listesi üzerinden) ---- */
+    case 'addAttendanceBulk': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.date && Array.isArray(body.records),'Tarih ve kayıt listesi gerekli');
+      let added=0;
+      for(const r of body.records){
+        const stu=byId(DB.students,r.studentId); if(!stu) continue;
+        const cid=stu.classId;
+        if(u.role==='teacher'){ const can=(u.teach||[]).some(t=>t.classIds.includes(cid)); if(!can) continue; }
+        const status=['yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
+        DB.attendance.push({id:uid('at'), kind:'student', studentId:stu.id, classId:cid, date:body.date,
+          status, note:(r.note||''), by:u.name, at:nowISO()}); added++;
+      }
+      audit(u,'addAttendanceBulk',body.date+' ('+added+' kayıt)'); return {ok:true, added}; }
+    case 'addTeacherAttendanceBulk': { adminOnly(); need(body.date && Array.isArray(body.records),'Tarih ve kayıt listesi gerekli');
+      let added=0;
+      for(const r of body.records){
+        const t=byId(DB.users,r.teacherId); if(!t || t.role!=='teacher') continue;
+        const status=['yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
+        DB.attendance.push({id:uid('at'), kind:'teacher', teacherId:t.id, date:body.date,
+          status, note:(r.note||''), by:u.name, at:nowISO()}); added++;
+      }
+      audit(u,'addTeacherAttendanceBulk',body.date+' ('+added+' kayıt)'); return {ok:true, added}; }
+    case 'addHomeworkBulk': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.subjectId && body.classId && body.date && Array.isArray(body.records),'Eksik alan');
+      if(u.role==='teacher') canTeach(body.subjectId,body.classId);
+      let added=0;
+      for(const r of body.records){
+        const stu=byId(DB.students,r.studentId); if(!stu || stu.classId!==body.classId) continue;
+        const bos=(v)=>v===''||v==null;
+        if(bos(r.dogru) && bos(r.yanlis) && bos(r.bos)) continue;
+        DB.grades.homework.push({id:uid('h'), subjectId:body.subjectId, classId:body.classId, studentId:stu.id,
+          date:body.date, dogru:r.dogru||'', yanlis:r.yanlis||'', bos:r.bos||'', by:u.name, at:nowISO()}); added++;
+      }
+      audit(u,'addHomeworkBulk',body.date+' ('+added+' kayıt)'); return {ok:true, added}; }
+    case 'addExamBulk': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.subjectId && body.classId && body.name && Array.isArray(body.records),'Eksik alan');
+      if(u.role==='teacher') canTeach(body.subjectId,body.classId);
+      let added=0;
+      for(const r of body.records){
+        const stu=byId(DB.students,r.studentId); if(!stu || stu.classId!==body.classId) continue;
+        if(r.score===''||r.score==null) continue;
+        DB.grades.exam.push({id:uid('e'), subjectId:body.subjectId, classId:body.classId, studentId:stu.id,
+          name:body.name, score:r.score, date:(body.date||nowISO().slice(0,10)), by:u.name, at:nowISO()}); added++;
+      }
+      audit(u,'addExamBulk',body.name+' ('+added+' kayıt)'); return {ok:true, added}; }
+
     /* ---- TEACHER ---- */
     case 'addHomework': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
       need(body.subjectId && body.classId && body.studentId && body.date,'Eksik alan');
