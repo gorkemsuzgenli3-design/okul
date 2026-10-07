@@ -116,25 +116,25 @@
 <body>
 
     <div id="login-view" class="login-container">
-        <form id="login-form" class="login-card">
+        <div class="login-card">
             <h2>Avni Tokur Eğitim</h2>
-            <p>Lütfen giriş yapın</p>
+            <p>Lütfen bilgilerinizi girin</p>
             <div class="form-group">
                 <label for="username">Kullanıcı Adı</label>
-                <input type="text" id="username" placeholder="admin" required>
+                <input type="text" id="username" autocomplete="off">
             </div>
             <div class="form-group">
                 <label for="password">Şifre</label>
-                <input type="password" id="password" placeholder="123" required>
+                <input type="password" id="password" autocomplete="off">
             </div>
-            <button type="submit" class="btn-submit">Giriş Yap</button>
-        </form>
+            <button type="button" class="btn-submit" onclick="girisYap()">Giriş Yap</button>
+        </div>
     </div>
 
     <div id="dashboard-view" style="display: none;">
         <header class="navbar">
             <h2>Avni Tokur Eğitim Paneli</h2>
-            <button onclick="logout()" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">Çıkış Yap</button>
+            <button onclick="cikisYap()" style="background:#ef4444; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">Çıkış Yap</button>
         </header>
 
         <div class="container">
@@ -175,22 +175,23 @@
     </div>
 
     <script>
-        document.getElementById('login-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            var u = document.getElementById('username').value;
-            var p = document.getElementById('password').value;
+        function girisYap() {
+            var k = document.getElementById('username').value.trim();
+            var s = document.getElementById('password').value.trim();
 
-            if (u === 'admin' && p === '123') {
+            if (k === 'admin' && s === '123') {
                 document.getElementById('login-view').style.display = 'none';
                 document.getElementById('dashboard-view').style.display = 'block';
             } else {
-                alert('Hatalı giriş!\nKullanıcı Adı: admin\nŞifre: 123');
+                alert('Girdiğiniz bilgiler yanlış!\n\nKullanıcı adı: admin\nŞifre: 123');
             }
-        });
+        }
 
-        function logout() {
+        function cikisYap() {
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('login-view').style.display = 'flex';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
         }
     </script>
 </body>
