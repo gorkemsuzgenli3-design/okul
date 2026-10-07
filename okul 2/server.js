@@ -29,6 +29,8 @@ function saveDB(){
 function loadDB(){
   if (fs.existsSync(DB_FILE)) { DB = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
   else { DB = buildSeed(); saveDB(); console.log('Yeni veritabani olusturuldu:', DB_FILE); }
+  // Eski veritabanlari icin guvenli gecis (devamsizlik alani yoksa ekle)
+  if(DB && !Array.isArray(DB.attendance)) DB.attendance = [];
 }
 function backupDB(){
   try{
@@ -174,6 +176,12 @@ function byId(arr,id){ return arr.find(x=>x.id===id); }
 function subjName(id){ const s=byId(DB.subjects,id); return s?s.name:''; }
 function className(id){ const c=byId(DB.classes,id); return c?c.name:''; }
 function studentName(id){ const s=byId(DB.students,id); return s?s.name:''; }
+function userName(id){ const u=byId(DB.users,id); return u?u.name:''; }
+/* Devamsizlik kaydini isimlerle zenginlestir */
+function enrichAtt(r){
+  if(r.kind==='teacher') return {...r, who:userName(r.teacherId), kindTr:'Öğretmen'};
+  return {...r, who:studentName(r.studentId), className:className(r.classId), kindTr:'Öğrenci'};
+}
 function adminSubjects(){ const ex=DB.meta.excludeAdminSubjects||[]; return DB.subjects.filter(s=>!ex.includes(s.name)); }
 
 function teacherCan(u, subjectId, classId){
@@ -186,7 +194,7 @@ function teacherCan(u, subjectId, classId){
 /* Role gore state uretimi */
 function buildState(u){
   const st = { user: publicUser(u), subjects:[], classes:DB.classes, students:[],
-    grades:{homework:[]}, exams:[], assignments:[], schedule:{}, payments:[], users:[] };
+    grades:{homework:[]}, exams:[], assignments:[], schedule:{}, payments:[], attendance:[], users:[] };
 
   if(u.role==='admin'){
     st.subjects = adminSubjects();
@@ -198,6 +206,8 @@ function buildState(u){
     st.payments = DB.payments;
     st.users = DB.users.map(publicUser);
     st.allSubjects = DB.subjects; // iç referans (atama kontrolü için)
+    st.attendance = (DB.attendance||[]).map(enrichAtt);
+    st.teachers = DB.users.filter(x=>x.role==='teacher').map(x=>({id:x.id, name:x.name}));
     st.audit = (DB.audit||[]).slice(-120).reverse(); // son islemler
   } else if(u.role==='teacher'){
     const mySubIds = (u.teach||[]).map(t=>t.subjectId);
@@ -209,6 +219,7 @@ function buildState(u){
     st.exams = DB.grades.exam.filter(e=>mySubIds.includes(e.subjectId));
     st.assignments = DB.assignments.filter(a=>mySubIds.includes(a.subjectId));
     if(u.scheduleSheet && DB.schedule[u.scheduleSheet]) st.schedule[u.scheduleSheet]=DB.schedule[u.scheduleSheet];
+    st.attendance = (DB.attendance||[]).filter(r=>r.kind==='student' && myClassIds.has(r.classId)).map(enrichAtt);
   } else if(u.role==='parent'){
     const child = byId(DB.students, u.studentId);
     st.child = child ? {...child, className:className(child.classId)} : null;
@@ -225,6 +236,7 @@ function buildState(u){
         if(k===cn || k.toUpperCase().startsWith(child.name.toUpperCase()+'-') || k.toUpperCase().startsWith(child.name.toUpperCase()+' '))
           st.schedule[k]=DB.schedule[k];
       });
+      st.attendance = (DB.attendance||[]).filter(r=>r.kind==='student' && r.studentId===child.id).map(enrichAtt);
     }
     st.subjects = DB.subjects;
   }
@@ -349,6 +361,34 @@ function handleMutate(u, body){
       if(day){ day.dersler=(day.dersler||[]).filter(s=>s.saat!==body.saat);
         if(!day.dersler.length) DB.schedule[body.sheet]=days.filter(d=>d.gun!==body.gun); }
       audit(u,'deleteSchedSlot',body.sheet+' '+body.gun+' '+body.saat); return {ok:true}; }
+
+    /* ---- DEVAMSIZLIK (Öğrenci: öğretmen+yönetici / Öğretmen: yönetici) ---- */
+    case 'addAttendance': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.studentId && body.date,'Öğrenci ve tarih gerekli');
+      const stu=byId(DB.students,body.studentId); need(stu,'Öğrenci bulunamadı');
+      const cid=stu.classId;
+      if(u.role==='teacher'){
+        const can=(u.teach||[]).some(t=>t.classIds.includes(cid));
+        if(!can){ const e=new Error('Bu sınıf için yetkiniz yok'); e.code=403; throw e; }
+      }
+      const status=['yok','gec','izinli'].includes(body.status)?body.status:'yok';
+      const rec={id:uid('at'), kind:'student', studentId:stu.id, classId:cid, date:body.date,
+        status, note:(body.note||''), by:u.name, at:nowISO()};
+      DB.attendance.push(rec); audit(u,'addAttendance',stu.name+' '+body.date+' '+status); return {ok:true, id:rec.id}; }
+    case 'addTeacherAttendance': { adminOnly(); need(body.teacherId && body.date,'Öğretmen ve tarih gerekli');
+      const t=byId(DB.users,body.teacherId); need(t && t.role==='teacher','Öğretmen bulunamadı');
+      const status=['yok','gec','izinli'].includes(body.status)?body.status:'yok';
+      const rec={id:uid('at'), kind:'teacher', teacherId:t.id, date:body.date,
+        status, note:(body.note||''), by:u.name, at:nowISO()};
+      DB.attendance.push(rec); audit(u,'addTeacherAttendance',t.name+' '+body.date+' '+status); return {ok:true, id:rec.id}; }
+    case 'deleteAttendance': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok'); need(body.id,'Eksik alan');
+      const rec=byId(DB.attendance,body.id); need(rec,'Kayıt bulunamadı');
+      if(u.role==='teacher'){
+        need(rec.kind==='student','Yetkiniz yok');
+        const can=(u.teach||[]).some(t=>t.classIds.includes(rec.classId));
+        if(!can){ const e=new Error('Bu kayıt için yetkiniz yok'); e.code=403; throw e; }
+      }
+      DB.attendance=DB.attendance.filter(x=>x.id!==body.id); audit(u,'deleteAttendance',rec.id); return {ok:true}; }
 
     /* ---- TEACHER ---- */
     case 'addHomework': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
