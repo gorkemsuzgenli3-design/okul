@@ -240,6 +240,14 @@ function buildState(u){
 
 function audit(u, action, detail){ DB.audit.push({at:nowISO(), by:u?u.username:'?', action, detail}); if(DB.audit.length>1000) DB.audit.shift(); }
 
+/* Odeme kaydinin odenen/kalan degerlerini tahsilat listesinden yeniden hesapla */
+function recalcPayment(p){
+  const paid = (p.odemeler||[]).reduce((s,x)=>s+(Number(x.miktar)||0),0);
+  p.odenen = paid;
+  p.kalan = (Number(p.odenecek)||0) - paid;
+  return p;
+}
+
 /* ---------------- Mutate (yazma) islemleri ---------------- */
 function handleMutate(u, body){
   const a = body.action;
@@ -292,6 +300,55 @@ function handleMutate(u, body){
       tu.active = !!body.active;
       if(!tu.active) tu.tokenVersion = (tu.tokenVersion||1)+1; // pasifte oturumu kes
       audit(u,'setActive',tu.username+'='+tu.active); return {ok:true}; }
+
+    /* ---- ADMIN: ÖDEMELER ---- */
+    case 'addPaymentRecord': { adminOnly(); need(body.isim,'İsim gerekli');
+      const due=Number(body.odenecek)||0;
+      const p={id:uid('p'), sheet:(body.sheet||body.isim), isim:body.isim, odenecek:due, odenen:0, kalan:due,
+        kayit:(body.kayit||nowISO().slice(0,10)), ek:(body.ek||null), odemeler:[]};
+      DB.payments.push(p); audit(u,'addPaymentRecord',p.isim); return {ok:true, id:p.id}; }
+    case 'setPaymentDue': { adminOnly(); need(body.paymentId,'Eksik alan');
+      const p=byId(DB.payments,body.paymentId); need(p,'Ödeme kaydı bulunamadı');
+      const due=Number(body.odenecek); need(!isNaN(due)&&due>=0,'Geçerli bir ücret girin');
+      p.odenecek=due; recalcPayment(p);
+      audit(u,'setPaymentDue',(p.isim||p.sheet)+'='+due); return {ok:true}; }
+    case 'addPayment': { adminOnly(); need(body.paymentId,'Eksik alan');
+      const p=byId(DB.payments,body.paymentId); need(p,'Ödeme kaydı bulunamadı');
+      const amt=Number(body.miktar); need(!isNaN(amt)&&amt>0,'Geçerli bir tutar girin');
+      p.odemeler=p.odemeler||[];
+      p.odemeler.push({tarih:(body.tarih||nowISO().slice(0,10)), miktar:amt});
+      recalcPayment(p); audit(u,'addPayment',(p.isim||p.sheet)+' +'+amt); return {ok:true}; }
+    case 'deletePaymentInstallment': { adminOnly(); need(body.paymentId,'Eksik alan');
+      const p=byId(DB.payments,body.paymentId); need(p,'Ödeme kaydı bulunamadı');
+      const i=Number(body.index); need(p.odemeler&&p.odemeler[i]!==undefined,'Tahsilat bulunamadı');
+      p.odemeler.splice(i,1); recalcPayment(p);
+      audit(u,'deletePaymentInstallment',p.isim||p.sheet); return {ok:true}; }
+    case 'deletePayment': { adminOnly(); need(body.paymentId,'Eksik alan');
+      const p=byId(DB.payments,body.paymentId); need(p,'Ödeme kaydı bulunamadı');
+      DB.payments=DB.payments.filter(x=>x.id!==body.paymentId);
+      audit(u,'deletePayment',p.isim||p.sheet); return {ok:true}; }
+
+    /* ---- ADMIN: DERS PROGRAMI ---- */
+    case 'addSchedSheet': { adminOnly(); need(body.sheet,'Program adı gerekli');
+      if(DB.schedule[body.sheet]){ const e=new Error('Bu program zaten var'); e.code=400; throw e; }
+      DB.schedule[body.sheet]=[]; audit(u,'addSchedSheet',body.sheet); return {ok:true}; }
+    case 'deleteSchedSheet': { adminOnly(); need(body.sheet,'Eksik alan');
+      need(DB.schedule[body.sheet],'Program bulunamadı'); delete DB.schedule[body.sheet];
+      audit(u,'deleteSchedSheet',body.sheet); return {ok:true}; }
+    case 'setSchedSlot': { adminOnly(); need(body.sheet && body.gun && body.saat,'Gün ve saat gerekli');
+      need(DB.schedule[body.sheet],'Program bulunamadı');
+      let day=DB.schedule[body.sheet].find(d=>d.gun===body.gun);
+      if(!day){ day={gun:body.gun, dersler:[]}; DB.schedule[body.sheet].push(day); }
+      day.dersler=day.dersler||[];
+      const ex=day.dersler.find(s=>s.saat===body.saat);
+      if(ex){ ex.ders=(body.ders||null); } else { day.dersler.push({saat:body.saat, ders:(body.ders||null)}); }
+      audit(u,'setSchedSlot',body.sheet+' '+body.gun+' '+body.saat); return {ok:true}; }
+    case 'deleteSchedSlot': { adminOnly(); need(body.sheet && body.gun && body.saat,'Eksik alan');
+      const days=DB.schedule[body.sheet]; need(days,'Program bulunamadı');
+      const day=days.find(d=>d.gun===body.gun);
+      if(day){ day.dersler=(day.dersler||[]).filter(s=>s.saat!==body.saat);
+        if(!day.dersler.length) DB.schedule[body.sheet]=days.filter(d=>d.gun!==body.gun); }
+      audit(u,'deleteSchedSlot',body.sheet+' '+body.gun+' '+body.saat); return {ok:true}; }
 
     /* ---- TEACHER ---- */
     case 'addHomework': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
