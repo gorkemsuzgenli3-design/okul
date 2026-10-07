@@ -11,6 +11,10 @@ async function api(path, method='GET', body){
   if(body){ opt.headers['Content-Type']='application/json'; opt.body=JSON.stringify(body); }
   const r = await fetch(path, opt);
   const data = await r.json().catch(()=>({}));
+  if(r.status===401 && path!=='/api/login'){ // oturum gecersiz -> cikis
+    TOKEN=''; localStorage.removeItem('atk_token');
+    if(!$('#login').classList.contains('login-wrap')){} location.reload(); throw new Error(data.error||'Oturum geçersiz');
+  }
   if(!r.ok) throw new Error(data.error || ('HTTP '+r.status));
   return data;
 }
@@ -23,10 +27,13 @@ function toast(msg, type='ok'){
   const t=$('#toast'); t.textContent=msg; t.className='toast '+type; t.classList.remove('hidden');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.add('hidden'),2600);
 }
-function openModal(title, html){
+let MODAL_FORCED=false;
+function openModal(title, html, forced){
+  MODAL_FORCED=!!forced;
   $('#modalTitle').textContent=title; $('#modalBody').innerHTML=html; $('#modal').classList.remove('hidden');
+  $('#modalClose').style.display = forced ? 'none' : '';
 }
-function closeModal(){ $('#modal').classList.add('hidden'); }
+function closeModal(){ if(MODAL_FORCED) return; $('#modal').classList.add('hidden'); }
 $('#modalClose').onclick=closeModal;
 $('#modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
 
@@ -39,17 +46,24 @@ $('#loginForm').onsubmit=async e=>{
     await boot();
   }catch(err){ $('#loginErr').textContent=err.message; }
 };
-$('#logout').onclick=()=>{ TOKEN=''; localStorage.removeItem('atk_token'); location.reload(); };
-$('#pwBtn').onclick=()=>{
-  openModal('Şifre Değiştir',
-    `<div class="field"><label>Mevcut Şifre</label><input id="op" type="password"></div>
+$('#logout').onclick=async()=>{ try{ await api('/api/logout','POST'); }catch(e){} TOKEN=''; localStorage.removeItem('atk_token'); location.reload(); };
+function ownPwModal(forced){
+  openModal(forced?'Şifrenizi Belirleyin':'Şifre Değiştir',
+    `${forced?'<p class="muted" style="margin-bottom:12px">Güvenlik için ilk girişte şifrenizi değiştirmelisiniz.</p>':''}
+     <div class="field"><label>Mevcut Şifre</label><input id="op" type="password"></div>
      <div class="field"><label>Yeni Şifre</label><input id="np" type="password"></div>
-     <button class="btn btn-primary btn-block" id="pwSave">Kaydet</button>`);
+     <div class="field"><label>Yeni Şifre (tekrar)</label><input id="np2" type="password"></div>
+     <p class="muted">En az 8 karakter, en az bir harf ve bir rakam içermeli.</p>
+     <button class="btn btn-primary btn-block" id="pwSave">Kaydet</button>`, forced);
   $('#pwSave').onclick=async()=>{
+    if($('#np').value!==$('#np2').value){ toast('Yeni şifreler aynı değil','err'); return; }
     try{ await mutate('changeOwnPassword',{oldPassword:$('#op').value,newPassword:$('#np').value});
-      closeModal(); toast('Şifre güncellendi'); }catch(e){ toast(e.message,'err'); }
+      MODAL_FORCED=false; closeModal(); toast('Şifre güncellendi');
+      if(ME) ME.mustChange=false; await refresh();
+    }catch(e){ toast(e.message,'err'); }
   };
-};
+}
+$('#pwBtn').onclick=()=>ownPwModal(false);
 
 /* ---- BOOT ---- */
 async function boot(){
@@ -58,10 +72,11 @@ async function boot(){
   const roleTr={admin:'Yönetici',teacher:'Öğretmen',parent:'Veli'}[ME.role]||ME.role;
   $('#whoami').innerHTML=`<b>${esc(ME.name)}</b>${roleTr} · ${esc(ME.username)}`;
   buildNav();
+  if(ME.mustChange) ownPwModal(true);   // ilk giriste sifre degistirmeye zorla
 }
 function buildNav(){
   const menus={
-    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['sched','Ders Programları'],['pay','Ödemeler']],
+    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['sched','Ders Programları'],['pay','Ödemeler'],['audit','İşlem Kayıtları']],
     teacher:[['tgenel','Panelim'],['tgive','Ödev Ver'],['thw','Ödev Sonuçları'],['texam','Sınav Notları'],['tsched','Programım']],
     parent:[['pchild','Çocuğum'],['psched','Ders Programı'],['phw','Ödev Sonuçları'],['passign','Verilen Ödevler'],['pexam','Sınav Notları']]
   };
@@ -88,6 +103,7 @@ const VIEWS={}; const wire={};
 
 /* ---- ortak yardimcilar ---- */
 function card(k,v){ return `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`; }
+function money(n){ const v=Number(n)||0; return v.toLocaleString('tr-TR')+' ₺'; }
 function tbl(cols, rows){
   if(!rows.length) return '<div class="empty">Kayıt yok</div>';
   return `<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead>
@@ -125,9 +141,11 @@ VIEWS.teachers=()=>{
   const sName=id=>{const s=(STATE.allSubjects||STATE.subjects).find(x=>x.id===id);return s?s.name:'?';};
   const rows=ts.map(t=>{
     const asg=(t.teach||[]).map(a=>`<span class="tag">${esc(sName(a.subjectId))} (${a.classIds.map(clsName).join(', ')||'—'})</span>`).join('')||'<span class="muted">atama yok</span>';
-    return [esc(t.name),esc(t.username),asg,
+    const nameCell=`${esc(t.name)} ${t.active===false?'<span class="badge err">pasif</span>':''}${t.mustChange?' <span class="badge warn">şifre bekliyor</span>':''}`;
+    return [nameCell,esc(t.username),asg,
       `<button class="btn btn-sm" data-assign="${t.id}">Ders/Sınıf Ata</button>
        <button class="btn btn-sm" data-pw="${t.id}">Şifre</button>
+       <button class="btn btn-sm" data-act="${t.id}" data-to="${t.active===false?1:0}">${t.active===false?'Aktifleştir':'Dondur'}</button>
        <button class="btn btn-sm btn-danger" data-del="${t.id}">Sil</button>`];
   });
   return `<div class="panel"><div class="panel-head"><h3>Öğretmenler</h3>
@@ -140,19 +158,25 @@ wire.teachers=()=>{
      `<div class="field"><label>Ad Soyad</label><input id="n"></div>
       <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
       <div class="field"><label>Şifre</label><input id="pw"></div>
+      <p class="muted">En az 8 karakter, bir harf + bir rakam. Öğretmen ilk girişte değiştirir.</p>
       <button class="btn btn-primary btn-block" id="sv">Ekle</button>`);
     $('#sv').onclick=async()=>{ try{ await mutate('addUser',{role:'teacher',name:$('#n').value.trim(),username:$('#us').value.trim(),password:$('#pw').value});
       closeModal(); toast('Öğretmen eklendi'); go('teachers'); }catch(e){ toast(e.message,'err'); } };
   };
   $('#content').querySelectorAll('[data-assign]').forEach(b=>b.onclick=()=>assignModal(b.dataset.assign));
   $('#content').querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>pwModal(b.dataset.pw));
+  $('#content').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>toggleActive(b.dataset.act, b.dataset.to==='1'));
   $('#content').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delUser(b.dataset.del));
 };
+async function toggleActive(uid, to){
+  try{ await mutate('setActive',{userId:uid,active:to}); toast(to?'Hesap aktifleştirildi':'Hesap donduruldu'); go(PAGE); }catch(e){ toast(e.message,'err'); }
+}
 function pwModal(uid){
   openModal('Şifre Belirle',`<div class="field"><label>Yeni Şifre</label><input id="pw"></div>
+    <p class="muted">En az 8 karakter, en az bir harf ve bir rakam. Kullanıcı ilk girişte bu şifreyi değiştirmek zorunda kalır.</p>
     <button class="btn btn-primary btn-block" id="sv">Kaydet</button>`);
   $('#sv').onclick=async()=>{ try{ await mutate('setPassword',{userId:uid,password:$('#pw').value});
-    closeModal(); toast('Şifre güncellendi'); }catch(e){ toast(e.message,'err'); } };
+    closeModal(); toast('Şifre güncellendi'); go(PAGE); }catch(e){ toast(e.message,'err'); } };
 }
 async function delUser(uid){
   if(!confirm('Bu hesabı silmek istediğinize emin misiniz?')) return;
@@ -186,8 +210,9 @@ function assignModal(uid){
 VIEWS.people=()=>{
   const stRows=(STATE.students||[]).map(s=>{
     const veli=(STATE.users||[]).find(u=>u.role==='parent'&&u.studentId===s.id);
-    return [esc(s.name),esc(clsName(s.classId)), veli?esc(veli.username):'<span class="muted">yok</span>',
-      veli?`<button class="btn btn-sm" data-pw="${veli.id}">Veli Şifre</button> <button class="btn btn-sm btn-danger" data-del="${veli.id}">Veli Sil</button>`
+    const veliCell = veli ? esc(veli.username)+(veli.active===false?' <span class="badge err">pasif</span>':'')+(veli.mustChange?' <span class="badge warn">şifre bekliyor</span>':'') : '<span class="muted">yok</span>';
+    return [esc(s.name),esc(clsName(s.classId)), veliCell,
+      veli?`<button class="btn btn-sm" data-pw="${veli.id}">Veli Şifre</button> <button class="btn btn-sm" data-act="${veli.id}" data-to="${veli.active===false?1:0}">${veli.active===false?'Aktifleştir':'Dondur'}</button> <button class="btn btn-sm btn-danger" data-del="${veli.id}">Veli Sil</button>`
            :`<button class="btn btn-sm btn-primary" data-np="${s.id}">Veli Hesabı Aç</button>`];
   });
   return `<div class="panel"><div class="panel-head"><h3>Öğrenciler</h3>
@@ -208,11 +233,13 @@ wire.people=()=>{
      `<div class="field"><label>Veli Adı</label><input id="n" value="${esc(s.name)} Velisi"></div>
       <div class="field"><label>Kullanıcı Adı</label><input id="us"></div>
       <div class="field"><label>Şifre</label><input id="pw"></div>
+      <p class="muted">En az 8 karakter, bir harf + bir rakam. Veli ilk girişte değiştirir.</p>
       <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
     $('#sv').onclick=async()=>{ try{ await mutate('addUser',{role:'parent',name:$('#n').value.trim(),username:$('#us').value.trim(),password:$('#pw').value,studentId:s.id});
       closeModal(); toast('Veli hesabı oluşturuldu'); go('people'); }catch(e){ toast(e.message,'err'); } };
   });
   $('#content').querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>pwModal(b.dataset.pw));
+  $('#content').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>toggleActive(b.dataset.act, b.dataset.to==='1'));
   $('#content').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delUser(b.dataset.del));
 };
 
@@ -247,12 +274,161 @@ VIEWS.exams=()=>{
   const rows=(STATE.exams||[]).map(e=>[esc(e.date),esc(e.studentName),esc(e.className),esc(e.subjectName),esc(e.name),`<b>${esc(e.score)}</b>`]);
   return `<div class="panel"><div class="panel-head"><h3>Sınav Notları</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sınav','Not'],rows)}</div>`;
 };
-VIEWS.sched=()=>schedHTML(STATE.schedule);
-VIEWS.pay=()=>{
-  const rows=(STATE.payments||[]).map(p=>Object.values(p).filter((v,i)=>i>0).map(v=>esc(v)));
-  const cols=(STATE.payments&&STATE.payments[0])?Object.keys(STATE.payments[0]).filter(k=>k!=='id'):['Kayıt'];
-  return `<div class="panel"><div class="panel-head"><h3>Ödemeler</h3></div>${tbl(cols,rows)}</div>`;
+VIEWS.sched=()=>{
+  const sch=STATE.schedule||{}; const keys=Object.keys(sch);
+  const blocks = keys.length ? keys.map(k=>{
+    const days=sch[k]||[];
+    const dayHtml = days.map(d=>`<div class="sched-day"><h4>${esc(d.gun)}</h4>
+      ${(d.dersler||[]).map(s=>`<div class="sched-slot"><span>${esc(s.saat)}</span><b>${esc(s.ders||'—')}</b>
+        <button class="btn btn-sm btn-danger" data-rmslot="${esc(k)}|${esc(d.gun)}|${esc(s.saat)}">Sil</button></div>`).join('')
+        || '<div class="muted" style="font-size:.82rem">Ders yok</div>'}
+    </div>`).join('');
+    return `<div class="panel"><div class="panel-head"><h3>${esc(k)}</h3>
+      <div><button class="btn btn-sm" data-addslot="${esc(k)}">+ Ders Ekle</button>
+      <button class="btn btn-sm btn-danger" data-rmsheet="${esc(k)}">Programı Sil</button></div></div>
+      <div class="sched">${dayHtml || '<div class="empty">Boş program</div>'}</div></div>`;
+  }).join('') : '<div class="empty">Program bulunmuyor</div>';
+  return `<div class="panel"><div class="panel-head"><h3>Ders Programları</h3>
+      <button class="btn btn-primary btn-sm" id="schedAdd">+ Yeni Program</button></div>
+      <p class="muted">Her program bir sınıfa ya da öğrenciye ait ders takvimidir. Buradan ekleyip düzenleyebilirsiniz.</p></div>
+    ${blocks}`;
 };
+wire.sched=()=>{
+  const a=$('#schedAdd'); if(a) a.onclick=()=>{
+    openModal('Yeni Program',
+     `<div class="field"><label>Program Adı</label><input id="shn" placeholder="örn. 6.SINIF veya AHMET-7"></div>
+      <button class="btn btn-primary btn-block" id="sv">Oluştur</button>`);
+    $('#sv').onclick=async()=>{ const n=$('#shn').value.trim(); if(!n){ toast('Ad gerekli','err'); return; }
+      try{ await mutate('addSchedSheet',{sheet:n}); closeModal(); toast('Program oluşturuldu'); go('sched'); }catch(e){ toast(e.message,'err'); } };
+  };
+  $('#content').querySelectorAll('[data-addslot]').forEach(b=>b.onclick=()=>schedSlotModal(b.dataset.addslot));
+  $('#content').querySelectorAll('[data-rmslot]').forEach(b=>b.onclick=async()=>{
+    const [sheet,gun,saat]=b.dataset.rmslot.split('|');
+    try{ await mutate('deleteSchedSlot',{sheet,gun,saat}); toast('Silindi'); go('sched'); }catch(e){ toast(e.message,'err'); }
+  });
+  $('#content').querySelectorAll('[data-rmsheet]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('"'+b.dataset.rmsheet+'" programını silmek istiyor musunuz?')) return;
+    try{ await mutate('deleteSchedSheet',{sheet:b.dataset.rmsheet}); toast('Program silindi'); go('sched'); }catch(e){ toast(e.message,'err'); }
+  });
+};
+function schedSlotModal(sheet){
+  const gunler=['PAZARTESİ','SALI','ÇARŞAMBA','PERŞEMBE','CUMA','CUMARTESİ','PAZAR'];
+  openModal('Ders Ekle – '+esc(sheet),
+   `<div class="field"><label>Gün</label><select id="sgun">${gunler.map(g=>`<option>${g}</option>`).join('')}</select></div>
+    <div class="field"><label>Saat</label><input id="ssaat" placeholder="örn. 17.00-17.40"></div>
+    <div class="field"><label>Ders</label><input id="sders" placeholder="örn. MATEMATİK"></div>
+    <button class="btn btn-primary btn-block" id="sv">Kaydet</button>`);
+  $('#sv').onclick=async()=>{
+    const saat=$('#ssaat').value.trim(); if(!saat){ toast('Saat gerekli','err'); return; }
+    try{ await mutate('setSchedSlot',{sheet, gun:$('#sgun').value, saat, ders:$('#sders').value.trim()});
+      closeModal(); toast('Ders eklendi'); go('sched'); }catch(e){ toast(e.message,'err'); }
+  };
+}
+VIEWS.audit=()=>{
+  const trAct={login:'Giriş',logout:'Çıkış',addUser:'Hesap ekleme',deleteUser:'Hesap silme',setPassword:'Şifre belirleme',
+    changeOwnPassword:'Şifre değiştirme',assignTeacher:'Ders atama',setActive:'Hesap durumu',addClass:'Sınıf ekleme',
+    addSubject:'Ders ekleme',addStudent:'Öğrenci ekleme',addHomework:'Ödev sonucu',addExam:'Sınav notu',
+    addAssignment:'Ödev verme',deleteHomework:'Ödev silme',deleteExam:'Sınav silme',deleteAssignment:'Ödev silme',
+    addPaymentRecord:'Ödeme kaydı ekleme',addPayment:'Tahsilat ekleme',setPaymentDue:'Ücret düzenleme',
+    deletePayment:'Ödeme kaydı silme',deletePaymentInstallment:'Tahsilat silme',
+    addSchedSheet:'Program ekleme',deleteSchedSheet:'Program silme',setSchedSlot:'Ders ekleme/düzenleme',deleteSchedSlot:'Ders silme'};
+  const rows=(STATE.audit||[]).map(a=>[
+    esc((a.at||'').replace('T',' ').slice(0,19)), esc(a.by),
+    esc(trAct[a.action]||a.action), esc(a.detail||'')]);
+  return `<div class="panel"><div class="panel-head"><h3>İşlem Kayıtları <span class="muted">(son 120)</span></h3></div>
+    ${tbl(['Zaman','Kullanıcı','İşlem','Ayrıntı'],rows)}</div>`;
+};
+VIEWS.pay=()=>{
+  const ps=STATE.payments||[];
+  const totDue=ps.reduce((s,p)=>s+(Number(p.odenecek)||0),0);
+  const totPaid=ps.reduce((s,p)=>s+(Number(p.odenen)||0),0);
+  const totRem=ps.reduce((s,p)=>s+(Number(p.kalan)||0),0);
+  const rows=ps.map(p=>{
+    const kalan=Number(p.kalan)||0;
+    const durum = kalan<=0 ? '<span class="badge ok">Tamamlandı</span>'
+                : (Number(p.odenen)||0)>0 ? '<span class="badge warn">Kısmi</span>'
+                : '<span class="badge err">Ödenmedi</span>';
+    return [
+      esc(p.isim||p.sheet||'-'),
+      esc(p.sheet||''),
+      money(p.odenecek),
+      money(p.odenen),
+      '<b>'+money(p.kalan)+'</b>',
+      esc(p.kayit||''),
+      durum,
+      '<button class="btn btn-sm" data-paydet="'+p.id+'">Detay / Tahsilat</button> '+
+      '<button class="btn btn-sm btn-danger" data-paydel="'+p.id+'">Sil</button>'
+    ];
+  });
+  return `<div class="cards">
+    ${card('Öğrenci Sayısı', ps.length)}
+    ${card('Toplam Ücret', money(totDue))}
+    ${card('Tahsil Edilen', money(totPaid))}
+    ${card('Kalan Alacak', money(totRem))}</div>
+    <div class="panel"><div class="panel-head"><h3>Ödemeler</h3>
+      <button class="btn btn-primary btn-sm" id="payAdd">+ Yeni Kayıt</button></div>
+    ${tbl(['İsim','Program','Ödenecek','Ödenen','Kalan','Kayıt','Durum','İşlem'],rows)}</div>`;
+};
+wire.pay=()=>{
+  const b=$('#payAdd'); if(b) b.onclick=payAddModal;
+  $('#content').querySelectorAll('[data-paydet]').forEach(x=>x.onclick=()=>payDetailModal(x.dataset.paydet));
+  $('#content').querySelectorAll('[data-paydel]').forEach(x=>x.onclick=()=>payDelete(x.dataset.paydel));
+};
+function payAddModal(){
+  openModal('Yeni Ödeme Kaydı',
+   `<div class="field"><label>Öğrenci Adı Soyadı</label><input id="pisim"></div>
+    <div class="field"><label>Program / Etiket <span class="muted">(isteğe bağlı)</span></label><input id="psheet" placeholder="örn. AHMET-7"></div>
+    <div class="field"><label>Ödenecek Ücret (₺)</label><input id="pdue" type="number" min="0"></div>
+    <div class="field"><label>Kayıt Tarihi</label><input id="pkayit" type="date"></div>
+    <button class="btn btn-primary btn-block" id="sv">Ekle</button>`);
+  $('#sv').onclick=async()=>{
+    const isim=$('#pisim').value.trim(); if(!isim){ toast('İsim gerekli','err'); return; }
+    try{ await mutate('addPaymentRecord',{isim, sheet:$('#psheet').value.trim(), odenecek:$('#pdue').value, kayit:$('#pkayit').value});
+      closeModal(); toast('Kayıt eklendi'); go('pay'); }catch(e){ toast(e.message,'err'); }
+  };
+}
+function payDetailModal(pid){
+  const p=(STATE.payments||[]).find(x=>x.id===pid); if(!p) return;
+  const list=(p.odemeler||[]).map((o,i)=>
+    `<div class="sched-slot"><span>${esc(o.tarih||'-')}</span><b>${money(o.miktar)}</b>
+       <button class="btn btn-sm btn-danger" data-rmpay="${i}">Sil</button></div>`).join('')
+    || '<div class="empty">Henüz tahsilat yok</div>';
+  openModal('Ödeme Detayı – '+esc(p.isim||p.sheet),
+   `<div class="cards" style="margin-bottom:14px">
+      ${card('Ödenecek',money(p.odenecek))}${card('Ödenen',money(p.odenen))}${card('Kalan',money(p.kalan))}</div>
+    <div class="panel" style="padding:12px">
+      <div class="panel-head"><h3 style="font-size:.95rem">Tahsilat Geçmişi</h3></div>
+      <div class="sched">${list}</div>
+    </div>
+    <div class="panel" style="padding:12px;margin-top:12px">
+      <div class="panel-head"><h3 style="font-size:.95rem">Yeni Tahsilat Ekle</h3></div>
+      <div class="field"><label>Tarih</label><input id="ntar" type="date"></div>
+      <div class="field"><label>Tutar (₺)</label><input id="nmik" type="number" min="0"></div>
+      <button class="btn btn-primary btn-block" id="addInst">Tahsilat Ekle</button>
+    </div>
+    <div class="panel" style="padding:12px;margin-top:12px">
+      <div class="panel-head"><h3 style="font-size:.95rem">Toplam Ücreti Düzenle</h3></div>
+      <div class="field"><label>Ödenecek Ücret (₺)</label><input id="edue" type="number" min="0" value="${Number(p.odenecek)||0}"></div>
+      <button class="btn btn-block" id="saveDue">Ücreti Kaydet</button>
+    </div>`);
+  $('#addInst').onclick=async()=>{
+    try{ await mutate('addPayment',{paymentId:pid, tarih:$('#ntar').value, miktar:$('#nmik').value});
+      toast('Tahsilat eklendi'); closeModal(); go('pay'); payDetailModal(pid); }catch(e){ toast(e.message,'err'); }
+  };
+  $('#saveDue').onclick=async()=>{
+    try{ await mutate('setPaymentDue',{paymentId:pid, odenecek:$('#edue').value});
+      toast('Ücret güncellendi'); closeModal(); go('pay'); payDetailModal(pid); }catch(e){ toast(e.message,'err'); }
+  };
+  $('#modalBody').querySelectorAll('[data-rmpay]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Bu tahsilat kaydını silmek istiyor musunuz?')) return;
+    try{ await mutate('deletePaymentInstallment',{paymentId:pid, index:Number(btn.dataset.rmpay)});
+      toast('Silindi'); closeModal(); go('pay'); payDetailModal(pid); }catch(e){ toast(e.message,'err'); }
+  });
+}
+async function payDelete(pid){
+  if(!confirm('Bu ödeme kaydını tamamen silmek istiyor musunuz?')) return;
+  try{ await mutate('deletePayment',{paymentId:pid}); toast('Silindi'); go('pay'); }catch(e){ toast(e.message,'err'); }
+}
 
 /* ================= ÖĞRETMEN ================= */
 VIEWS.tgenel=()=>{
