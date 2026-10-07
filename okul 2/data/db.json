@@ -1,0 +1,2152 @@
+{
+ "meta": {
+  "secret": "e451975ec97f36173183e627a24873479e9806f554734a404e515a2ad9e08225",
+  "created": "2026-10-07T12:10:05.426Z",
+  "excludeAdminSubjects": [
+   "Matematik"
+  ]
+ },
+ "subjects": [
+  {
+   "id": "s_muy2fchi_1",
+   "name": "Matematik"
+  },
+  {
+   "id": "s_muy2fchi_2",
+   "name": "Fizik"
+  },
+  {
+   "id": "s_muy2fchi_3",
+   "name": "İngilizce"
+  },
+  {
+   "id": "s_muy2fchi_4",
+   "name": "Sosyal"
+  },
+  {
+   "id": "s_muy2fchi_5",
+   "name": "Coğrafya"
+  },
+  {
+   "id": "s_muy2fchi_6",
+   "name": "Türkçe"
+  },
+  {
+   "id": "s_muy2fchi_7",
+   "name": "Edebiyat"
+  },
+  {
+   "id": "s_muy2fchi_8",
+   "name": "Fen"
+  },
+  {
+   "id": "s_muy2jws6_1",
+   "name": "matematik"
+  }
+ ],
+ "classes": [
+  {
+   "id": "c_muy2fchi_9",
+   "name": "3.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_a",
+   "name": "5.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_b",
+   "name": "7.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_c",
+   "name": "8.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_d",
+   "name": "9.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_e",
+   "name": "10.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_f",
+   "name": "11.SINIF"
+  },
+  {
+   "id": "c_muy2fchi_g",
+   "name": "12.SINIF"
+  }
+ ],
+ "students": [
+  {
+   "id": "st_muy2fchi_h",
+   "name": "ASİL",
+   "classId": "c_muy2fchi_a"
+  },
+  {
+   "id": "st_muy2fchi_i",
+   "name": "ARİF",
+   "classId": "c_muy2fchi_a"
+  },
+  {
+   "id": "st_muy2fchi_j",
+   "name": "GÖNÜL",
+   "classId": "c_muy2fchi_b"
+  },
+  {
+   "id": "st_muy2fchk_k",
+   "name": "AHMET",
+   "classId": "c_muy2fchi_b"
+  },
+  {
+   "id": "st_muy2fchk_l",
+   "name": "FURKAN",
+   "classId": "c_muy2fchi_b"
+  },
+  {
+   "id": "st_muy2fchk_m",
+   "name": "YUSUF",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_n",
+   "name": "ÖMER",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_o",
+   "name": "NECMETTİN",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_p",
+   "name": "NEHİR",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_q",
+   "name": "BUĞLEM",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_r",
+   "name": "HAMZA",
+   "classId": "c_muy2fchi_c"
+  },
+  {
+   "id": "st_muy2fchk_s",
+   "name": "İDİL",
+   "classId": "c_muy2fchi_f"
+  },
+  {
+   "id": "st_muy2fchk_t",
+   "name": "ESLEM",
+   "classId": "c_muy2fchi_f"
+  },
+  {
+   "id": "st_muy2fchk_u",
+   "name": "İREM",
+   "classId": "c_muy2fchi_f"
+  },
+  {
+   "id": "st_muy2fchk_v",
+   "name": "YUSUF",
+   "classId": "c_muy2fchi_f"
+  },
+  {
+   "id": "st_muy2fchk_w",
+   "name": "ALPARSLAN",
+   "classId": "c_muy2fchi_9"
+  }
+ ],
+ "users": [
+  {
+   "id": "u_muy2fchk_1r",
+   "role": "admin",
+   "name": "Yönetici",
+   "username": "yonetici",
+   "active": true,
+   "mustChangePassword": false,
+   "tokenVersion": 2,
+   "salt": "7f56d9081587ab6dd98238fb8303d1b1",
+   "hash": "d3af14ea7230a520f559b268d142c43ff6854764bbd5f5a482f473e1f62714566930f248e7edeec9643fb16f0e7d86e896bd59476d8d1d768dc4afe9bb508ab6"
+  },
+  {
+   "id": "u_muy2fci7_1s",
+   "role": "teacher",
+   "name": "Görkem",
+   "username": "gorkem",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_2",
+     "classIds": [
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "GÖRKEM",
+   "active": true,
+   "mustChangePassword": false,
+   "tokenVersion": 3,
+   "salt": "f7580471db2a1bfa2acb55f42bdd055f",
+   "hash": "58b787335d48e725635d433f911c8723bf664f12f9ced1463b6d0f37331481f9cace56fa079d549acdf8760abc0b8c3d487343b57332b2b10e3f61f4dc4e7403"
+  },
+  {
+   "id": "u_muy2fciq_1t",
+   "role": "teacher",
+   "name": "Elif",
+   "username": "elif",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_3",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "ELİF",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "d2638eba3216b3bfc330bade7ed4329c",
+   "hash": "8a593bb2ea764ebc7fc76774d77a04c0822027fb4318228cd76ed8919f8e2c0e76e05752b641589d16459f4cf79a575a5586160bbeaf40f7bd1f2295cca38211"
+  },
+  {
+   "id": "u_muy2fcj8_1u",
+   "role": "teacher",
+   "name": "Ebruşah",
+   "username": "ebrusah",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_4",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    },
+    {
+     "subjectId": "s_muy2fchi_5",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "EBRUŞAH",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "0bcd73d30c40600246b38d8862bdf037",
+   "hash": "f61108bb4275952edfd9fdeec9d05c1e83a4da5643ab0836834a0a3c4e17a0b9699da4f22f4980f4ccf108134e75ca0070f8cb160018405e25ef68a2d61b3133"
+  },
+  {
+   "id": "u_muy2fcjr_1v",
+   "role": "teacher",
+   "name": "Ebru",
+   "username": "ebru",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_6",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    },
+    {
+     "subjectId": "s_muy2fchi_7",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "EBRU",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "d64ecf644bef4839265d4139c616398f",
+   "hash": "005e6afda2ef77e56029a59f90a1a1e8167d9cc1cb76ec62213a1db1bcefd07cb908a1cabf2641eb6ce2581ce262413a1f459e813e5ed953a113dd051ec37106"
+  },
+  {
+   "id": "u_muy2fck9_1w",
+   "role": "teacher",
+   "name": "Zehra",
+   "username": "zehra",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_6",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    },
+    {
+     "subjectId": "s_muy2fchi_7",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "ZEHRA",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "cd72b985787739890370e92e6dd95468",
+   "hash": "91119b484d328e78affbdee595fd90ef8b1ff3e37061d98652966165a413040c2ac48302fe024fd600bf7822c0e747865b3d7f2b51105ca3cfba3489b980bc44"
+  },
+  {
+   "id": "u_muy2fcks_1x",
+   "role": "teacher",
+   "name": "Pervin",
+   "username": "pervin",
+   "teach": [
+    {
+     "subjectId": "s_muy2fchi_8",
+     "classIds": [
+      "c_muy2fchi_9",
+      "c_muy2fchi_a",
+      "c_muy2fchi_b",
+      "c_muy2fchi_c",
+      "c_muy2fchi_d",
+      "c_muy2fchi_e",
+      "c_muy2fchi_f",
+      "c_muy2fchi_g"
+     ]
+    }
+   ],
+   "scheduleSheet": "FEN",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "121ea2dd1bfa75d2a248f9e482116172",
+   "hash": "f80280fe27b4519ee9b3e2cf8863a72146b5c586a969e566e140881e907d83e4af2328c4eefaa5a02867d447b84093c33192774a7ed823c4e41eab01d1e98405"
+  },
+  {
+   "id": "u_muy2fclb_1y",
+   "role": "parent",
+   "name": "ASİL Velisi",
+   "username": "asilveli",
+   "studentId": "st_muy2fchi_h",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "f288762d8baa1232a8a1d62479d9ac25",
+   "hash": "29f36d559e648d8839185bddd0c00d8cdfc430d6bf6e003455b32b8d732d95e385ca03a433d44c3bf732611a7b6a0048905912f478aa480654d9efa160e48dce"
+  },
+  {
+   "id": "u_muy2fclt_1z",
+   "role": "parent",
+   "name": "ARİF Velisi",
+   "username": "arifveli",
+   "studentId": "st_muy2fchi_i",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "5fff1497952415821da93df07e4fb54d",
+   "hash": "4b58bd48c6e9c3363364231041637ab97ebdb2f1b0f59389f587f0b37d3618374b19550128a1c3febe29f23c3fd16a11377768c4c5e876e3a7ff9f29d9ebe1ec"
+  },
+  {
+   "id": "u_muy2fcmc_20",
+   "role": "parent",
+   "name": "GÖNÜL Velisi",
+   "username": "gonulveli",
+   "studentId": "st_muy2fchi_j",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "4133ffe18a7718e049a71ee32a3583ad",
+   "hash": "48afbb6c620e23f79f3d95372249083bf17a77ddef42ad8f50e9db075f8025f3f6db43e7134730b38c6e7584845f0e14ba7004fc5cc6ac5cc0f737cb9ced8ad4"
+  },
+  {
+   "id": "u_muy2fcmu_21",
+   "role": "parent",
+   "name": "AHMET Velisi",
+   "username": "ahmetveli",
+   "studentId": "st_muy2fchk_k",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "727c93c68863e20faca983ffbf27078c",
+   "hash": "b887afae4839ab8af77b7022231e947ebe371151f7b44c3667b757a727be44387a0ca48fcac3c86056a53a9aa63c798f7e063fa859f1edd01e7e230ca0513be3"
+  },
+  {
+   "id": "u_muy2fcnd_22",
+   "role": "parent",
+   "name": "FURKAN Velisi",
+   "username": "furkanveli",
+   "studentId": "st_muy2fchk_l",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "f0465e43e1e8d501dfd0c37bd45935ca",
+   "hash": "7369bb190da5bcb3591743260f8171d637073bcf9b641e94cac4e7bbd819611357147a77d1c0b90dee533099902c970e32abc24d66874db5a9aa2b0d63f17c23"
+  },
+  {
+   "id": "u_muy2fcnv_23",
+   "role": "parent",
+   "name": "YUSUF Velisi",
+   "username": "yusufveli",
+   "studentId": "st_muy2fchk_m",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "0703231f7ea3c00dde3c03076e869352",
+   "hash": "919fc08611db88b2392976284e6d09af81947ca66412665cfb11441b8f02757182cc4e34a899baff98f4919968e3389fd175db74aad2b657913866b6df4d6005"
+  },
+  {
+   "id": "u_muy2fcoe_24",
+   "role": "parent",
+   "name": "ÖMER Velisi",
+   "username": "omerveli",
+   "studentId": "st_muy2fchk_n",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "574872c40b0a741f381151a17a993ae2",
+   "hash": "641bb051168ae1fd1c1cd1684b303f984d3ab1705f2e8e4efed7d02aed756a0313745738064c0d386d60de104c0f38bb6aea07a4494da77b8e99289ef2bfd782"
+  },
+  {
+   "id": "u_muy2fcow_25",
+   "role": "parent",
+   "name": "NECMETTİN Velisi",
+   "username": "necmettinveli",
+   "studentId": "st_muy2fchk_o",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "36fc4edfd777f51c16a5f4ea931f2f59",
+   "hash": "60bb87ad182f1f95af4dbea781d90e6dac2c8d54686b47d67d653815724c98df4332bb413562c1c0cb07c962abb6ac5553fe15aa3831dda38cb24348c914e95d"
+  },
+  {
+   "id": "u_muy2fcpe_26",
+   "role": "parent",
+   "name": "NEHİR Velisi",
+   "username": "nehirveli",
+   "studentId": "st_muy2fchk_p",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "d5b28d7d8b4676005e4a6aced54abd9e",
+   "hash": "d30700f4647b204d2b8d19edba2ab54b3466a51a1eda8bd28f52ea30288b4978a6fa44e821b27a38c88ec983ad51d50ef6d30b9f0e7466eeef72c3c63567e4d1"
+  },
+  {
+   "id": "u_muy2fcpx_27",
+   "role": "parent",
+   "name": "BUĞLEM Velisi",
+   "username": "buglemveli",
+   "studentId": "st_muy2fchk_q",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "b6b4834a9300aba18fe54deaee2c6d7b",
+   "hash": "c39c50a62f9042eaeb9714823c9d60b21f3a21132b49d73fbca8a58690b110a31bf91ead64aed42093b6667ade24fc5f8011c31e587ff844da6ff0af7954c352"
+  },
+  {
+   "id": "u_muy2fcqf_28",
+   "role": "parent",
+   "name": "HAMZA Velisi",
+   "username": "hamzaveli",
+   "studentId": "st_muy2fchk_r",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "56330aef9950809ece2c6c9a85fd5dd4",
+   "hash": "7fce25a06d95f11ab3be111fb73efa0ba228854898cc4274a972bbddf0f93f0b8e33049ff12c776b48040ef993b37c8afaba0e98434bd87df4e4e59f3da27a16"
+  },
+  {
+   "id": "u_muy2fcqy_29",
+   "role": "parent",
+   "name": "İDİL Velisi",
+   "username": "idilveli",
+   "studentId": "st_muy2fchk_s",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "42aefea2dce2d8e2ed8bd13bf3d3ade1",
+   "hash": "1c1de338ae2eba976f54ce6629af848ff6e35633ca75555f1a231122fe71f8facba3857f323fa29bc01814ff73e8afa4f8098357f2e3d0c7275a511985d7d96d"
+  },
+  {
+   "id": "u_muy2fcrg_2a",
+   "role": "parent",
+   "name": "ESLEM Velisi",
+   "username": "eslemveli",
+   "studentId": "st_muy2fchk_t",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "47056c469ace262634ee7b929ada5262",
+   "hash": "49e07b8db33bd4abe664306b0d40ed4d2ebf9d8678b75252b19332227cee64f1ae87caf451731b09f4c3a1df13895679b065f45c619193f764505fbe1cb547ad"
+  },
+  {
+   "id": "u_muy2fcry_2b",
+   "role": "parent",
+   "name": "İREM Velisi",
+   "username": "iremveli",
+   "studentId": "st_muy2fchk_u",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "0799445efbd045fe2a346bd8cd55b899",
+   "hash": "626d4dd1ddda821127c05436021e7da755481c182d4616fce88bdafa0835fd4d060d6154c2cecc2e64b898f1a0d2fe2c654ad4f3fa4b81472772dd30d19a1371"
+  },
+  {
+   "id": "u_muy2fcsh_2c",
+   "role": "parent",
+   "name": "YUSUF Velisi",
+   "username": "yusufveli2",
+   "studentId": "st_muy2fchk_v",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "341e88809a304d73ca4c1e64247e6c61",
+   "hash": "e9e0b406bd0ed2eecf9c45012baa3de59845c8d3d05a2fea1f7989966cb15a330fa75ce5b68fc473e5e512604ef3ba295bbd52c77ec32a01d46279bcf24d654b"
+  },
+  {
+   "id": "u_muy2fcsz_2d",
+   "role": "parent",
+   "name": "ALPARSLAN Velisi",
+   "username": "alparslanveli",
+   "studentId": "st_muy2fchk_w",
+   "active": true,
+   "mustChangePassword": true,
+   "tokenVersion": 1,
+   "salt": "c50431a986026898fc4db3413bf47550",
+   "hash": "698e12421a0866462760aad151a4b2f8c986c9e999ab0471227bd0e625e10937309fe8994a645c5d8fa7f20734c6fdb2f1a9b3d68557122ac662946be3e38816"
+  }
+ ],
+ "grades": {
+  "homework": [
+   {
+    "id": "h_muy2fchk_x",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_a",
+    "studentId": "st_muy2fchi_h",
+    "date": "2026-09-27",
+    "dogru": 8,
+    "yanlis": 14,
+    "bos": 2,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_y",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_a",
+    "studentId": "st_muy2fchi_i",
+    "date": "2026-09-27",
+    "dogru": 0,
+    "yanlis": 0,
+    "bos": 24,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_z",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_b",
+    "studentId": "st_muy2fchi_j",
+    "date": "2026-09-27",
+    "dogru": 13,
+    "yanlis": 0,
+    "bos": 0,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_10",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_b",
+    "studentId": "st_muy2fchk_k",
+    "date": "2026-09-27",
+    "dogru": 9,
+    "yanlis": 4,
+    "bos": 0,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_11",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_b",
+    "studentId": "st_muy2fchk_l",
+    "date": "2026-09-27",
+    "dogru": 0,
+    "yanlis": 0,
+    "bos": 13,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_12",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_b",
+    "studentId": "st_muy2fchk_l",
+    "date": "2026-10-03",
+    "dogru": 0,
+    "yanlis": 0,
+    "bos": 36,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_13",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_m",
+    "date": "2026-09-26",
+    "dogru": 16,
+    "yanlis": 3,
+    "bos": 5,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_14",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_n",
+    "date": "2026-09-26",
+    "dogru": 16,
+    "yanlis": 2,
+    "bos": 6,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_15",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_o",
+    "date": "2026-09-26",
+    "dogru": 12,
+    "yanlis": 2,
+    "bos": 10,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_16",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_p",
+    "date": "2026-09-26",
+    "dogru": 15,
+    "yanlis": 3,
+    "bos": 6,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_17",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_q",
+    "date": "2026-09-26",
+    "dogru": 17,
+    "yanlis": 1,
+    "bos": 6,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_18",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_r",
+    "date": "2026-09-26",
+    "dogru": 0,
+    "yanlis": 0,
+    "bos": 20,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   },
+   {
+    "id": "h_muy2fchk_19",
+    "subjectId": "s_muy2fchi_1",
+    "classId": "c_muy2fchi_c",
+    "studentId": "st_muy2fchk_r",
+    "date": "2026-10-03",
+    "dogru": 52,
+    "yanlis": 1,
+    "bos": 19,
+    "by": "(içe aktarıldı)",
+    "at": "2026-10-07T12:10:05.432Z"
+   }
+  ],
+  "exam": []
+ },
+ "assignments": [],
+ "attendance": [],
+ "schedule": {
+  "5.SINIF": [
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "SOSYAL"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "FEN"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "TÜRKÇE"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "7.SINIF": [
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "SOSYAL"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "TÜRKÇE"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "FEN"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "8.SINIF": [
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "SOSYAL"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "FEN"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "TÜRKÇE"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "9.SINIF": [
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "FİZİK"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "COĞRAFYA"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "KİMYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "EDEBİYAT"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "10.SINIF": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "COĞRAFYA"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "KİMYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "FİZİK"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "EDEBİYAT"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "11.SINIF": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "FİZİK"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "COĞRAFYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "EDEBİYAT"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "KİMYA"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "HAMZA-8": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "FEN"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "SOSYAL/DİN"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     },
+     {
+      "saat": "18.30-19.10",
+      "ders": "TÜRKÇE"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "EFE-2": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "TÜRKÇE"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     },
+     {
+      "saat": "17.30-18.10",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "MATEMATİK"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "ALPARSLAN-3": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "17.30-18.10",
+      "ders": "TÜRKÇE/MAT"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "ALPARSLAN YENİ": [
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.30-18.10",
+      "ders": "İNGİLİZCE"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "17.30-18.10",
+      "ders": "TÜRKÇE/MAT"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "EBRU": [
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "8.SINIF HAMZA"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "11.30-12.10",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "10.SINIF EDEBİYAT"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "9.SINIF EDEBİYAT"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "ZEHRA": [
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "5.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "11.SINIF EDEBİYAT"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "EBRUŞAH": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "10.SINIF COĞRAFYA"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "5.SINIF"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     },
+     {
+      "saat": "18.30-19.10",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "8.SINIF HAMZA"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     },
+     {
+      "saat": "18.30-19.10",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "13.30-14.10",
+      "ders": "11.SINIF COĞRAFYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "9.SINIF COĞRAFYA"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "ELİF": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "3.SINIF ALPARSLAN"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     },
+     {
+      "saat": "17.30-18.10",
+      "ders": "2.SINIF EFE"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "11.30-12.10",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "7.SINIF",
+      "ders": null
+     },
+     {
+      "saat": "5.SINIF",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "5.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "ELİF YENİ": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "17.30-18.10",
+      "ders": "2.SINIF EFE"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.30-18.10",
+      "ders": "3.SINIF ALPARSLAN"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "11.30-12.10",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "5.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "GÖRKEM": [
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "HAMZA-8"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     },
+     {
+      "saat": "18.30-19.10",
+      "ders": "9.SINIF FİZİK"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": null
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "9.SINIF MATEMATİK"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "10.SINIF FİZİK"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     },
+     {
+      "saat": "5.SINIF",
+      "ders": null
+     },
+     {
+      "saat": "7.SINIF",
+      "ders": null
+     },
+     {
+      "saat": "11.SINIF MATEMATİK",
+      "ders": null
+     },
+     {
+      "saat": "10.SINIF MATEMATİK",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "18.30-19.10",
+      "ders": "11.SINIF FİZİK"
+     },
+     {
+      "saat": "19.10-19.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "5.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "11.SINIF MATEMATİK"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "10.SINIF MATEMATİK"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "FEN": [
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "5.SINIF "
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "10.SINIF KİMYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PAZAR",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": null
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "9.SINIF KİMYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "11.SINIF KİMYA"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "HAMZA-8"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "Sayfa1": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "HAMZA-8"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "PERŞEMBE",
+    "dersler": [
+     {
+      "saat": "17.00-17.40",
+      "ders": "9.SINIF KİMYA"
+     },
+     {
+      "saat": "17.40-18.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": []
+   },
+   {
+    "gun": "CUMARTESİ",
+    "dersler": [
+     {
+      "saat": "10.00-10.40",
+      "ders": "5.SINIF "
+     },
+     {
+      "saat": "10.40-11.20",
+      "ders": null
+     },
+     {
+      "saat": "11.30-12.10",
+      "ders": "7.SINIF"
+     },
+     {
+      "saat": "12.10-12.50",
+      "ders": null
+     },
+     {
+      "saat": "13.30-14.10",
+      "ders": "10.SINIF KİMYA"
+     },
+     {
+      "saat": "14.10-14.50",
+      "ders": null
+     },
+     {
+      "saat": "15.00-15.40",
+      "ders": "8.SINIF"
+     },
+     {
+      "saat": "15.40-16.20",
+      "ders": null
+     }
+    ]
+   }
+  ],
+  "MELİKE": [
+   {
+    "gun": "ÇARŞAMBA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "EFE TÜRKÇE"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     }
+    ]
+   },
+   {
+    "gun": "CUMA",
+    "dersler": [
+     {
+      "saat": "16.00-16.40",
+      "ders": "EFE MATEMATİK"
+     },
+     {
+      "saat": "16.40-17.20",
+      "ders": null
+     },
+     {
+      "saat": "17.30-18.10",
+      "ders": "ALPARSLAN TÜRKÇE/MAT"
+     },
+     {
+      "saat": "18.10-18.50",
+      "ders": null
+     }
+    ]
+   }
+  ]
+ },
+ "payments": [
+  {
+   "id": "p_muy2fchk_1a",
+   "sheet": "ÖMER-8",
+   "isim": "ÖMER EROĞLU",
+   "odenecek": 225000,
+   "odenen": 40000,
+   "kalan": 185000,
+   "kayit": "2026-08-20",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-07-20",
+     "miktar": 40000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1b",
+   "sheet": "İREM-ESLEM-11",
+   "isim": "İREM ESLEM BALOTA",
+   "odenecek": 279600,
+   "odenen": 20000,
+   "kalan": 259600,
+   "kayit": "2026-06-01",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-10-06",
+     "miktar": 20000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1c",
+   "sheet": "YUSUF-11",
+   "isim": "YUSUF MUTLU",
+   "odenecek": 249600,
+   "odenen": 64000,
+   "kalan": 185600,
+   "kayit": "2026-06-01",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-06-01",
+     "miktar": 25000
+    },
+    {
+     "tarih": "2026-09-04",
+     "miktar": 25000
+    },
+    {
+     "tarih": "2026-10-02",
+     "miktar": 14000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1d",
+   "sheet": "AHMET-7",
+   "isim": "AHMET MUZAFFER KORKMAZ",
+   "odenecek": 110000,
+   "odenen": 40000,
+   "kalan": 70000,
+   "kayit": "2026-03-10",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-03-10",
+     "miktar": 30000
+    },
+    {
+     "tarih": "2026-09-18",
+     "miktar": 10000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1e",
+   "sheet": "İDİLSU-11",
+   "isim": "İDİLSU TAHİROĞLU",
+   "odenecek": 249600,
+   "odenen": 50000,
+   "kalan": 199600,
+   "kayit": "2026-06-01",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-06-01",
+     "miktar": 50000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1f",
+   "sheet": "ARİF-5",
+   "isim": "ARİF TOKMAK",
+   "odenecek": 170000,
+   "odenen": 50000,
+   "kalan": 120000,
+   "kayit": "2026-01-17",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-10-06",
+     "miktar": 50000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1g",
+   "sheet": "ASİL-5",
+   "isim": "ASİL ABİT BÜYÜKBAYRAK",
+   "odenecek": 170000,
+   "odenen": 30000,
+   "kalan": 140000,
+   "kayit": "2026-09-01",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-09-14",
+     "miktar": 30000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1h",
+   "sheet": "FURKAN-7",
+   "isim": "FURKAN EMİR SERTDEMİR",
+   "odenecek": 200000,
+   "odenen": 20000,
+   "kalan": 180000,
+   "kayit": "2026-09-17",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-09-21",
+     "miktar": 20000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1i",
+   "sheet": "NEHİR-8",
+   "isim": "NEHİR ONURLU",
+   "odenecek": 170000,
+   "odenen": 50000,
+   "kalan": 120000,
+   "kayit": "2025-12-26",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2025-12-26",
+     "miktar": 50000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1j",
+   "sheet": "ALPARSLAN",
+   "isim": "ALPARSLAN ÖZTÜRK",
+   "odenecek": 228000,
+   "odenen": 48000,
+   "kalan": 180000,
+   "kayit": "2026-08-20",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-09-21",
+     "miktar": 48000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1k",
+   "sheet": "ZEYNEP-9",
+   "isim": "ZEYNEP BETÜL EROĞLU",
+   "odenecek": 307800,
+   "odenen": 0,
+   "kalan": 307800,
+   "kayit": "2026-08-20",
+   "ek": null,
+   "odemeler": []
+  },
+  {
+   "id": "p_muy2fchk_1l",
+   "sheet": "NECMETTİN-8",
+   "isim": "NECMETTİN EMİN UZPEKER",
+   "odenecek": 210000,
+   "odenen": 0,
+   "kalan": 210000,
+   "kayit": null,
+   "ek": null,
+   "odemeler": []
+  },
+  {
+   "id": "p_muy2fchk_1m",
+   "sheet": "YUSUF-8",
+   "isim": "YUSUF ÇINAR ATAMAN",
+   "odenecek": 170000,
+   "odenen": 80000,
+   "kalan": 90000,
+   "kayit": "2026-08-25",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-08-25",
+     "miktar": 70000
+    },
+    {
+     "tarih": "2026-09-14",
+     "miktar": 10000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1n",
+   "sheet": "HAMZA-8",
+   "isim": "HAMZA BARAN TAHİROĞLU",
+   "odenecek": 345000,
+   "odenen": 100000,
+   "kalan": 245000,
+   "kayit": "2026-08-25",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-10-05",
+     "miktar": 100000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1o",
+   "sheet": "SAHRA-10",
+   "isim": "SAHRA BUDAK",
+   "odenecek": 249600,
+   "odenen": 35000,
+   "kalan": 214600,
+   "kayit": "2026-09-01",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-09-02",
+     "miktar": 20000
+    },
+    {
+     "tarih": "2026-09-22",
+     "miktar": 15000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1p",
+   "sheet": "EBRAR-12",
+   "isim": "EBRAR KORKMAZ",
+   "odenecek": 140000,
+   "odenen": 40000,
+   "kalan": 100000,
+   "kayit": "2026-09-29",
+   "ek": null,
+   "odemeler": [
+    {
+     "tarih": "2026-10-05",
+     "miktar": 40000
+    }
+   ]
+  },
+  {
+   "id": "p_muy2fchk_1q",
+   "sheet": "YUSUF-2",
+   "isim": "YUSUF EYMEN İLBOĞA",
+   "odenecek": 150000,
+   "odenen": 0,
+   "kalan": 150000,
+   "kayit": "2026-09-30",
+   "ek": null,
+   "odemeler": []
+  }
+ ],
+ "audit": [
+  {
+   "at": "2026-10-07T12:10:48.270Z",
+   "by": "yonetici",
+   "action": "login",
+   "detail": ""
+  },
+  {
+   "at": "2026-10-07T12:11:02.192Z",
+   "by": "yonetici",
+   "action": "changeOwnPassword",
+   "detail": "yonetici"
+  },
+  {
+   "at": "2026-10-07T12:13:38.358Z",
+   "by": "yonetici",
+   "action": "addSubject",
+   "detail": "matematik"
+  },
+  {
+   "at": "2026-10-07T12:14:17.264Z",
+   "by": "yonetici",
+   "action": "assignTeacher",
+   "detail": "gorkem"
+  },
+  {
+   "at": "2026-10-07T12:24:26.857Z",
+   "by": "yonetici",
+   "action": "setPassword",
+   "detail": "gorkem"
+  },
+  {
+   "at": "2026-10-07T12:24:43.805Z",
+   "by": "gorkem",
+   "action": "login",
+   "detail": ""
+  },
+  {
+   "at": "2026-10-07T12:24:57.939Z",
+   "by": "gorkem",
+   "action": "changeOwnPassword",
+   "detail": "gorkem"
+  },
+  {
+   "at": "2026-10-07T12:25:25.741Z",
+   "by": "gorkem",
+   "action": "addExam",
+   "detail": "İDİL"
+  },
+  {
+   "at": "2026-10-07T12:25:43.550Z",
+   "by": "gorkem",
+   "action": "addExam",
+   "detail": "İDİL"
+  },
+  {
+   "at": "2026-10-07T12:25:46.648Z",
+   "by": "gorkem",
+   "action": "deleteExam",
+   "detail": "e_muy2z2lp_2"
+  },
+  {
+   "at": "2026-10-07T12:25:47.531Z",
+   "by": "gorkem",
+   "action": "deleteExam",
+   "detail": "e_muy2zgce_3"
+  }
+ ]
+}
