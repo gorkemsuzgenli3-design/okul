@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avni Tokur Eğitim – Okul Yönetim Sistemi</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- GIRIS EKRANI -->
+<div id="login" class="login-wrap">
+  <form id="loginForm" class="login-card">
+    <div class="brand">
+      <div class="brand-logo">AT</div>
+      <h1>Avni Tokur Eğitim</h1>
+      <p class="muted">Okul Yönetim Sistemi</p>
+    </div>
+    <label>Kullanıcı Adı</label>
+    <input id="luser" autocomplete="username" placeholder="örn. yonetici" required>
+    <label>Şifre</label>
+    <input id="lpass" type="password" autocomplete="current-password" placeholder="Şifreniz" required>
+    <button type="submit" class="btn btn-primary btn-block">Giriş Yap</button>
+    <div id="loginErr" class="err"></div>
+  </form>
+</div>
+
+<!-- UYGULAMA -->
+<div id="app" class="app hidden">
+  <aside class="sidebar">
+    <div class="side-brand"><div class="brand-logo sm">AT</div><span>Avni Tokur</span></div>
+    <nav id="nav" class="nav"></nav>
+    <div class="side-foot">
+      <div id="whoami" class="whoami"></div>
+      <button id="pwBtn" class="btn btn-ghost btn-sm btn-block">Şifre Değiştir</button>
+      <button id="logout" class="btn btn-ghost btn-sm btn-block">Çıkış</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><h2 id="pageTitle">Panel</h2><div id="topRight" class="muted"></div></header>
+    <section id="content" class="content"></section>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-wrap hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle">Başlık</h3><button id="modalClose" class="icon-btn">&times;</button></div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
