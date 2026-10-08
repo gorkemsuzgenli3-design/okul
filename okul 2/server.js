@@ -32,6 +32,8 @@ function loadDB(){
   // Eski veritabanlari icin guvenli gecis (devamsizlik alani yoksa ekle)
   if(DB && !Array.isArray(DB.attendance)) DB.attendance = [];
   if(DB && !Array.isArray(DB.trials)) DB.trials = [];   // deneme (trial) takibi
+  // Deneme kayitlarinda sinav turu (TYT/AYT/LGS/OZEL) yoksa OZEL varsay
+  if(DB && Array.isArray(DB.trials)) DB.trials.forEach(t=>{ if(!t.type) t.type='OZEL'; });
 }
 function backupDB(){
   try{
@@ -187,8 +189,13 @@ function enrichAtt(r){
 function adminSubjects(){ const ex=DB.meta.excludeAdminSubjects||[]; return DB.subjects.filter(s=>!ex.includes(s.name)); }
 
 /* ---- Deneme (trial) hesaplama ve zenginlestirme ---- */
-function trialNet(d,y){ const net=(Number(d)||0) - (Number(y)||0)/4; return Math.round(net*100)/100; }
+/* Sinav turune gore yanlis katsayisi: LGS'de 3 yanlis 1 dogruyu goturur, diger (TYT/AYT/OZEL) 4 yanlis 1 dogru */
+function trialDivisor(type){ return type==='LGS' ? 3 : 4; }
+function trialNet(d,y,div){ div=div||4; const net=(Number(d)||0) - (Number(y)||0)/div; return Math.round(net*100)/100; }
+/* Tahmini puan: 100 taban + net oraniyla 400 puan (ust sinir 500) */
+function trialPuan(totalNet,totalQ){ if(!(totalQ>0)) return 0; const p=100 + Math.max(0,totalNet)/totalQ*400; return Math.round(Math.min(500,Math.max(100,p))*10)/10; }
 function enrichTrial(t){
+  const div=trialDivisor(t.type);
   const subs=(t.subjects||[]).map(s=>({subjectId:s.subjectId, subjectName:subjName(s.subjectId), qCount:Number(s.qCount)||0}));
   const totalQ=subs.reduce((a,s)=>a+s.qCount,0);
   const resById={}; (t.results||[]).forEach(r=>{ resById[r.studentId]=r.cells||{}; });
@@ -200,27 +207,28 @@ function enrichTrial(t){
     subs.forEach(s=>{
       const c=cells[s.subjectId];
       if(c && (c.d!=null||c.y!=null||c.b!=null)){
-        const d=Number(c.d)||0, y=Number(c.y)||0, b=Number(c.b)||0, net=trialNet(d,y);
+        const d=Number(c.d)||0, y=Number(c.y)||0, b=Number(c.b)||0, net=trialNet(d,y,div);
         out[s.subjectId]={d,y,b,net}; totalNet+=net; hasData=true;
       } else { out[s.subjectId]=null; }
     });
     totalNet=Math.round(totalNet*100)/100;
-    const puan = totalQ>0 ? Math.max(0, Math.round(totalNet/totalQ*1000)/10) : 0;
+    const puan = trialPuan(totalNet,totalQ);
     return {studentId:stu.id, studentName:stu.name, cells:out, totalNet, totalQ, puan, hasData};
   });
-  // siralama (puana gore) + sira numarasi; sadece veri girilenler siralanir
-  const ranked=rows.filter(r=>r.hasData).sort((a,b)=>b.puan-a.puan);
+  // siralama (toplam nete gore) + sira numarasi; sadece veri girilenler siralanir
+  const ranked=rows.filter(r=>r.hasData).sort((a,b)=>b.totalNet-a.totalNet);
   ranked.forEach((r,i)=>{ r.rank=i+1; });
   const participants=ranked.length;
   const classAvg = participants? Math.round(ranked.reduce((a,r)=>a+r.puan,0)/participants*10)/10 : 0;
+  const classAvgNet = participants? Math.round(ranked.reduce((a,r)=>a+r.totalNet,0)/participants*100)/100 : 0;
   // subject bazinda ortalama net (grafik icin)
   const subjAvg=subs.map(s=>{
     const vals=ranked.map(r=>r.cells[s.subjectId]).filter(Boolean).map(c=>c.net);
     const avg=vals.length? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100 : 0;
     return {subjectId:s.subjectId, subjectName:s.subjectName, qCount:s.qCount, avgNet:avg};
   });
-  return {id:t.id, name:t.name, classId:t.classId, className:className(t.classId), date:t.date,
-    subjects:subs, totalQ, rows, participants, classAvg, subjAvg};
+  return {id:t.id, name:t.name, type:t.type||'OZEL', classId:t.classId, className:className(t.classId), date:t.date,
+    subjects:subs, totalQ, rows, participants, classAvg, classAvgNet, subjAvg};
 }
 
 function teacherCan(u, subjectId, classId){
@@ -282,8 +290,8 @@ function buildState(u){
       st.trials = (DB.trials||[]).filter(t=>t.classId===child.classId).map(enrichTrial)
         .map(t=>{
           const mine=t.rows.find(r=>r.studentId===child.id)||null;
-          return {id:t.id, name:t.name, className:t.className, date:t.date, subjects:t.subjects,
-            totalQ:t.totalQ, participants:t.participants, classAvg:t.classAvg, subjAvg:t.subjAvg,
+          return {id:t.id, name:t.name, type:t.type, className:t.className, date:t.date, subjects:t.subjects,
+            totalQ:t.totalQ, participants:t.participants, classAvg:t.classAvg, classAvgNet:t.classAvgNet, subjAvg:t.subjAvg,
             mine};
         });
     }
@@ -441,13 +449,13 @@ function handleMutate(u, body){
         const can=(u.teach||[]).some(t=>t.classIds.includes(cid));
         if(!can){ const e=new Error('Bu sınıf için yetkiniz yok'); e.code=403; throw e; }
       }
-      const status=['yok','gec','izinli'].includes(body.status)?body.status:'yok';
+      const status=['geldi','yok','gec','izinli'].includes(body.status)?body.status:'yok';
       const rec={id:uid('at'), kind:'student', studentId:stu.id, classId:cid, date:body.date,
         status, note:(body.note||''), by:u.name, at:nowISO()};
       DB.attendance.push(rec); audit(u,'addAttendance',stu.name+' '+body.date+' '+status); return {ok:true, id:rec.id}; }
     case 'addTeacherAttendance': { adminOnly(); need(body.teacherId && body.date,'Öğretmen ve tarih gerekli');
       const t=byId(DB.users,body.teacherId); need(t && t.role==='teacher','Öğretmen bulunamadı');
-      const status=['yok','gec','izinli'].includes(body.status)?body.status:'yok';
+      const status=['geldi','yok','gec','izinli'].includes(body.status)?body.status:'yok';
       const rec={id:uid('at'), kind:'teacher', teacherId:t.id, date:body.date,
         status, note:(body.note||''), by:u.name, at:nowISO()};
       DB.attendance.push(rec); audit(u,'addTeacherAttendance',t.name+' '+body.date+' '+status); return {ok:true, id:rec.id}; }
@@ -468,7 +476,7 @@ function handleMutate(u, body){
         const stu=byId(DB.students,r.studentId); if(!stu) continue;
         const cid=stu.classId;
         if(u.role==='teacher'){ const can=(u.teach||[]).some(t=>t.classIds.includes(cid)); if(!can) continue; }
-        const status=['yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
+        const status=['geldi','yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
         DB.attendance.push({id:uid('at'), kind:'student', studentId:stu.id, classId:cid, date:body.date,
           status, note:(r.note||''), by:u.name, at:nowISO()}); added++;
       }
@@ -477,7 +485,7 @@ function handleMutate(u, body){
       let added=0;
       for(const r of body.records){
         const t=byId(DB.users,r.teacherId); if(!t || t.role!=='teacher') continue;
-        const status=['yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
+        const status=['geldi','yok','gec','izinli'].includes(r.status)?r.status:null; if(!status) continue;
         DB.attendance.push({id:uid('at'), kind:'teacher', teacherId:t.id, date:body.date,
           status, note:(r.note||''), by:u.name, at:nowISO()}); added++;
       }
@@ -506,28 +514,23 @@ function handleMutate(u, body){
       }
       audit(u,'addExamBulk',body.name+' ('+added+' kayıt)'); return {ok:true, added}; }
 
-    /* ---- DENEME (TRIAL) TAKIBI ---- */
-    case 'addTrial': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+    /* ---- DENEME (TRIAL) TAKIBI — sonuc girisi yalnizca yoneticide ---- */
+    case 'addTrial': { adminOnly();
       need(body.name && body.classId && Array.isArray(body.subjects) && body.subjects.length,'Deneme adı, sınıf ve ders bilgisi gerekli');
       need(byId(DB.classes,body.classId),'Sınıf bulunamadı');
-      if(u.role==='teacher'){ const can=(u.teach||[]).some(t=>t.classIds.includes(body.classId));
-        if(!can){ const e=new Error('Bu sınıf için yetkiniz yok'); e.code=403; throw e; } }
+      const type=['TYT','AYT','LGS','OZEL'].includes(body.type)?body.type:'OZEL';
       const subs=body.subjects.map(s=>({subjectId:s.subjectId, qCount:Math.max(0,Number(s.qCount)||0)}))
         .filter(s=>byId(DB.subjects,s.subjectId) && s.qCount>0);
       need(subs.length,'En az bir ders ve soru sayısı girin');
-      const t={id:uid('tr'), name:String(body.name).trim(), classId:body.classId,
+      const t={id:uid('tr'), name:String(body.name).trim(), type, classId:body.classId,
         date:(body.date||nowISO().slice(0,10)), subjects:subs, results:[], by:u.name, at:nowISO()};
-      DB.trials.push(t); audit(u,'addTrial',t.name); return {ok:true, id:t.id}; }
-    case 'deleteTrial': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok'); need(body.trialId,'Eksik alan');
+      DB.trials.push(t); audit(u,'addTrial',t.name+' ('+type+')'); return {ok:true, id:t.id}; }
+    case 'deleteTrial': { adminOnly(); need(body.trialId,'Eksik alan');
       const t=byId(DB.trials,body.trialId); need(t,'Deneme bulunamadı');
-      if(u.role==='teacher'){ const can=(u.teach||[]).some(x=>x.classIds.includes(t.classId));
-        if(!can){ const e=new Error('Yetkiniz yok'); e.code=403; throw e; } }
       DB.trials=DB.trials.filter(x=>x.id!==body.trialId); audit(u,'deleteTrial',t.name); return {ok:true}; }
-    case 'saveTrialResults': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+    case 'saveTrialResults': { adminOnly();
       need(body.trialId && Array.isArray(body.records),'Eksik alan');
       const t=byId(DB.trials,body.trialId); need(t,'Deneme bulunamadı');
-      if(u.role==='teacher'){ const can=(u.teach||[]).some(x=>x.classIds.includes(t.classId));
-        if(!can){ const e=new Error('Yetkiniz yok'); e.code=403; throw e; } }
       const subIds=new Set(t.subjects.map(s=>s.subjectId));
       let saved=0;
       for(const r of body.records){

@@ -113,8 +113,9 @@ function tbl(cols, rows){
 }
 function clsName(id){ const c=(STATE.classes||[]).find(x=>x.id===id); return c?c.name:''; }
 /* devamsizlik durumu -> rozet */
-const ATT_LABEL={yok:'Gelmedi', gec:'Geç Geldi', izinli:'İzinli'};
+const ATT_LABEL={geldi:'Geldi', yok:'Gelmedi', gec:'Geç Geldi', izinli:'İzinli'};
 function attBadge(s){
+  if(s==='geldi') return '<span class="badge ok">Geldi</span>';
   if(s==='gec') return '<span class="badge warn">Geç Geldi</span>';
   if(s==='izinli') return '<span class="badge acc">İzinli</span>';
   return '<span class="badge err">Gelmedi</span>';
@@ -133,9 +134,9 @@ function rosterStatusTable(students, idp){
 function collectStatus(idp){
   const recs=[];
   document.querySelectorAll('.'+idp+'-st').forEach(sel=>{
-    if(sel.value!=='geldi'){ const id=sel.dataset.id;
-      const nt=document.querySelector('.'+idp+'-nt[data-id="'+id+'"]');
-      recs.push({studentId:id, status:sel.value, note:nt?nt.value.trim():''}); }
+    const id=sel.dataset.id;
+    const nt=document.querySelector('.'+idp+'-nt[data-id="'+id+'"]');
+    recs.push({studentId:id, status:sel.value, note:nt?nt.value.trim():''});
   });
   return recs;
 }
@@ -439,12 +440,51 @@ wire.struct=()=>{
     $('#sv').onclick=async()=>{ try{ await mutate('addSubject',{name:$('#n').value.trim()}); closeModal(); toast('Eklendi'); go('struct'); }catch(e){ toast(e.message,'err'); } }; };
 };
 
+/* ---- Ödev: düzenli görünüm yardımcıları ---- */
+function hwSuccess(list){
+  let d=0,y=0,b=0;
+  (list||[]).forEach(h=>{ d+=(+h.dogru||0); y+=(+h.yanlis||0); b+=(+h.bos||0); });
+  const tot=d+y+b; const rate=tot?Math.round(d/tot*100):0;
+  return {d,y,b,tot,rate};
+}
+function hwBadges(h){
+  return `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`;
+}
+/* Ödev kayıtlarını tarihe göre gruplar; genel özet + her tarih için ayrı kart */
+function hwGrouped(records, mode){
+  const list=(records||[]).slice();
+  if(!list.length) return '<div class="empty">Henüz ödev sonucu yok</div>';
+  const g=hwSuccess(list);
+  const summary=`<div class="cards">
+    ${card('Toplam Kayıt', list.length)}
+    ${card('Toplam Soru', g.tot)}
+    ${card('Genel Başarı', '%'+g.rate)}</div>`;
+  const byDate={};
+  list.forEach(h=>{ const d=h.date||'—'; (byDate[d]=byDate[d]||[]).push(h); });
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  const head = mode==='parent' ? ['Ders','Sonuç']
+    : mode==='teacher' ? ['Öğrenci','Sınıf','Ders','Sonuç','İşlem']
+    : ['Öğrenci','Sınıf','Ders','Sonuç'];
+  const groups=dates.map(d=>{
+    const grp=byDate[d]; const s=hwSuccess(grp);
+    const rows=grp.map(h=>{
+      if(mode==='parent') return [esc(h.subjectName), hwBadges(h)];
+      if(mode==='teacher') return [esc(h.studentName),esc(h.className),esc(h.subjectName),hwBadges(h),`<button class="btn btn-sm btn-danger" data-dh="${h.id}">Sil</button>`];
+      return [esc(h.studentName),esc(h.className),esc(h.subjectName),hwBadges(h)];
+    });
+    return `<div class="panel"><div class="panel-head"><h3>${esc(d)}</h3>
+      <span class="muted">${grp.length} kayıt · %${s.rate} başarı</span></div>
+      ${tbl(head, rows)}</div>`;
+  }).join('');
+  return summary+groups;
+}
+
 /* ---- ADMIN: salt-okunur listeler ---- */
 VIEWS.homework=()=>{
-  const rows=(STATE.grades.homework||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(h=>
-    [esc(h.date),esc(h.studentName),esc(h.className),esc(h.subjectName),
-     `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Ödev Takibi</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sonuç'],rows)}</div>`;
+  return `<div class="panel"><div class="panel-head"><h3>Ödev Takibi</h3>
+    <span class="muted">tarihe göre gruplanmış sonuçlar</span></div>
+    <p class="muted">Aşağıda tüm sınıflardan girilen ödev sonuçları tarih tarih özetlenmiştir.</p></div>`
+    + hwGrouped(STATE.grades.homework, 'admin');
 };
 VIEWS.assign=()=>{
   const rows=(STATE.assignments||[]).map(a=>[esc(a.dueDate||'—'),esc(a.className),esc(a.subjectName),esc(a.title),esc(a.by||'')]);
@@ -457,10 +497,40 @@ VIEWS.exams=()=>{
 VIEWS.perf=()=>perfSelectorView(STATE.classes||[]);
 wire.perf=perfSelectorWire;
 /* ---- ADMIN: Devamsızlık ---- */
+/* Aylık devam özeti: her öğrenci için seçilen ayda durum sayıları */
+function attSummaryRows(records, month, kind){
+  const recs=(records||[]).filter(a=>a.kind===kind && (a.date||'').slice(0,7)===month);
+  const map={};
+  recs.forEach(a=>{ const k=(kind==='student'?a.studentId:a.teacherId)||a.id;
+    map[k]=map[k]||{name:a.who||'', className:a.className||'', geldi:0,yok:0,gec:0,izinli:0,toplam:0};
+    if(map[k][a.status]!=null) map[k][a.status]++; map[k].toplam++; });
+  return Object.values(map).sort((a,b)=>(a.name||'').localeCompare(b.name||'','tr'));
+}
+function attSummaryTable(records, month, kind){
+  const rows=attSummaryRows(records, month, kind);
+  if(!rows.length) return '<div class="empty">Bu ay için kayıt yok</div>';
+  const isStu=kind==='student';
+  const head = isStu
+    ? ['Öğrenci','Sınıf','Geldi','Geç','İzinli','Gelmedi','Devam (Geldi+Geç)']
+    : ['Öğretmen','Geldi','Geç','İzinli','Gelmedi','Devam (Geldi+Geç)'];
+  const body=rows.map(r=>{
+    const devam=r.geldi+r.gec;
+    const base = isStu ? [esc(r.name),esc(r.className)] : [esc(r.name)];
+    return base.concat([
+      `<span class="badge ok">${r.geldi}</span>`,
+      `<span class="badge warn">${r.gec}</span>`,
+      `<span class="badge acc">${r.izinli}</span>`,
+      `<span class="badge err">${r.yok}</span>`,
+      `<b>${devam}</b>`]);
+  });
+  return tbl(head, body);
+}
 VIEWS.att=()=>{
   const all=STATE.attendance||[];
-  const stu=all.filter(a=>a.kind==='student').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const tea=all.filter(a=>a.kind==='teacher').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const curMonth=new Date().toISOString().slice(0,7);
+  // detay listelerinde yalnızca devamsızlık (geldi dışı) göster; “geldi” sayıları aylık özette
+  const stu=all.filter(a=>a.kind==='student' && a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const tea=all.filter(a=>a.kind==='teacher' && a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const stuRows=stu.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
     `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
   const teaRows=tea.map(a=>[esc(a.date),esc(a.who),attBadge(a.status),esc(a.note||''),
@@ -470,10 +540,11 @@ VIEWS.att=()=>{
       <option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></td>
     <td><input class="ta-nt" data-id="${t.id}" placeholder="not (isteğe bağlı)"></td></tr>`).join('');
   return `<div class="cards">
-      ${card('Öğrenci Devamsızlığı', stu.length)}
-      ${card('Öğretmen Devamsızlığı', tea.length)}</div>
-    <div class="tabs"><button class="tab active" data-tab="stu">Öğrenci Devamsızlıkları</button>
-      <button class="tab" data-tab="tea">Öğretmen Devamsızlıkları</button></div>
+      ${card('Öğrenci Devamsızlık Kaydı', stu.length)}
+      ${card('Öğretmen Devamsızlık Kaydı', tea.length)}</div>
+    <div class="tabs"><button class="tab active" data-tab="stu">Öğrenci Yoklaması</button>
+      <button class="tab" data-tab="sum">Aylık Özet</button>
+      <button class="tab" data-tab="tea">Öğretmen Yoklaması</button></div>
     <div data-pane="stu">
       <div class="panel"><div class="panel-head"><h3>Sınıf Yoklaması Al</h3></div>
         <div class="row">
@@ -481,9 +552,14 @@ VIEWS.att=()=>{
           <div class="field"><label>Tarih</label><input id="asDate" type="date"></div></div>
         <div id="asRoster" style="margin-top:14px"><div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div></div>
         <button class="btn btn-primary" id="asSave" style="margin-top:14px;display:none">Yoklamayı Kaydet</button>
-        <p class="muted" style="margin-top:8px">Yalnızca “Gelmedi / Geç / İzinli” seçilenler kaydedilir. “Geldi” kalanlar için kayıt oluşmaz.</p></div>
-      <div class="panel"><div class="panel-head"><h3>Öğrenci Devamsızlık Kayıtları</h3></div>
+        <p class="muted" style="margin-top:8px">Her öğrencinin durumu (Geldi / Gelmedi / Geç / İzinli) kaydedilir. “Geldi” sayılarını “Aylık Özet” sekmesinden görebilirsiniz.</p></div>
+      <div class="panel"><div class="panel-head"><h3>Öğrenci Devamsızlık Kayıtları</h3><span class="muted">yalnızca gelmeyen/geç/izinli</span></div>
         ${tbl(['Tarih','Öğrenci','Sınıf','Durum','Not','İşlem'],stuRows)}</div></div>
+    <div data-pane="sum" class="hidden">
+      <div class="panel"><div class="panel-head"><h3>Aylık Devam Özeti</h3>
+        <div class="field" style="margin:0"><input id="sumMonth" type="month" value="${curMonth}"></div></div>
+        <p class="muted" style="margin-bottom:12px">Seçilen ayda her öğrencinin kaç gün geldiği, kaç gün gelmediği, geç kaldığı veya izinli olduğu aşağıda listelenir.</p>
+        <div id="sumBody"></div></div></div>
     <div data-pane="tea" class="hidden">
       <div class="panel"><div class="panel-head"><h3>Öğretmen Yoklaması Al</h3></div>
         <div class="row"><div class="field"><label>Tarih</label><input id="atDate" type="date"></div></div>
@@ -506,18 +582,20 @@ wire.att=()=>{
   const sv=$('#asSave'); if(sv) sv.onclick=async()=>{
     if(!$('#asDate').value){ toast('Tarih seçin','err'); return; }
     const records=collectStatus('as');
-    if(!records.length){ toast('Devamsız işaretlenen öğrenci yok','err'); return; }
+    if(!records.length){ toast('Öğrenci listesi boş','err'); return; }
     try{ const r=await mutate('addAttendanceBulk',{date:$('#asDate').value, records});
-      toast((r.added||0)+' kayıt eklendi'); go('att'); }catch(e){ toast(e.message,'err'); } };
+      toast((r.added||0)+' yoklama kaydı eklendi'); go('att'); }catch(e){ toast(e.message,'err'); } };
   const tsv=$('#atSave'); if(tsv) tsv.onclick=async()=>{
     if(!$('#atDate').value){ toast('Tarih seçin','err'); return; }
     const records=[];
-    $('#content').querySelectorAll('.ta-st').forEach(sel=>{ if(sel.value!=='geldi'){ const id=sel.dataset.id;
-      const nt=$('#content').querySelector('.ta-nt[data-id="'+id+'"]'); records.push({teacherId:id,status:sel.value,note:nt?nt.value.trim():''}); } });
-    if(!records.length){ toast('Devamsız işaretlenen öğretmen yok','err'); return; }
+    $('#content').querySelectorAll('.ta-st').forEach(sel=>{ const id=sel.dataset.id;
+      const nt=$('#content').querySelector('.ta-nt[data-id="'+id+'"]'); records.push({teacherId:id,status:sel.value,note:nt?nt.value.trim():''}); });
+    if(!records.length){ toast('Öğretmen listesi boş','err'); return; }
     try{ const r=await mutate('addTeacherAttendanceBulk',{date:$('#atDate').value, records});
-      toast((r.added||0)+' kayıt eklendi'); go('att');
+      toast((r.added||0)+' yoklama kaydı eklendi'); go('att');
       $('#content').querySelector('.tab[data-tab="tea"]').click(); }catch(e){ toast(e.message,'err'); } };
+  // aylık özet
+  const sm=$('#sumMonth'); if(sm){ const draw=()=>{ $('#sumBody').innerHTML=attSummaryTable(STATE.attendance, sm.value, 'student'); }; sm.onchange=draw; draw(); }
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
     try{ await mutate('deleteAttendance',{id:b.dataset.rmatt}); toast('Silindi'); go('att'); }catch(e){ toast(e.message,'err'); } });
@@ -779,10 +857,6 @@ wire.tgive=()=>{
 };
 
 VIEWS.thw=()=>{
-  const rows=(STATE.grades.homework||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(h=>
-    [esc(h.date),esc(h.studentName),esc(h.className),esc(h.subjectName),
-     `<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`,
-     `<button class="btn btn-sm btn-danger" data-dh="${h.id}">Sil</button>`]);
   return `<div class="panel"><div class="panel-head"><h3>Sınıf Ödev Sonuçları (Toplu)</h3></div>
     <div class="row">
       <div class="field"><label>Ders</label><select id="hwSub">${opts(STATE.subjects,'','id','name','Ders seçin')}</select></div>
@@ -791,7 +865,9 @@ VIEWS.thw=()=>{
     <div id="hwRoster" style="margin-top:14px"><div class="empty">Ders ve sınıf seçince öğrenci listesi burada çıkar</div></div>
     <button class="btn btn-primary" id="hwSave" style="margin-top:14px;display:none">Hepsini Kaydet</button>
     <p class="muted" style="margin-top:8px">Yalnızca en az bir değer (doğru/yanlış/boş) girilen öğrenciler kaydedilir.</p></div>
-    <div class="panel"><div class="panel-head"><h3>Girilen Sonuçlar</h3></div>${tbl(['Tarih','Öğrenci','Sınıf','Ders','Sonuç','İşlem'],rows)}</div>`;
+    <div class="panel"><div class="panel-head"><h3>Girilen Sonuçlar</h3><span class="muted">tarihe göre gruplu</span></div>
+    <p class="muted">Aşağıda daha önce girdiğiniz ödev sonuçları tarih tarih özetlenmiştir.</p></div>`
+    + hwGrouped(STATE.grades.homework, 'teacher');
 };
 wire.thw=()=>{
   const refresh=()=>{ const sid=$('#hwSub').value, cid=$('#hwCls').value;
@@ -843,20 +919,33 @@ wire.texam=()=>{
   $('#content').querySelectorAll('[data-de]').forEach(b=>b.onclick=async()=>{ try{ await mutate('deleteExam',{id:b.dataset.de}); toast('Silindi'); go('texam'); }catch(e){ toast(e.message,'err'); } });
 };
 VIEWS.tatt=()=>{
-  const recs=(STATE.attendance||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const curMonth=new Date().toISOString().slice(0,7);
+  const recs=(STATE.attendance||[]).filter(a=>a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const rows=recs.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
     `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Sınıf Yoklaması Al</h3></div>
+  return `<div class="tabs"><button class="tab active" data-tab="al">Yoklama Al</button>
+      <button class="tab" data-tab="sum">Aylık Özet</button></div>
+    <div data-pane="al">
+    <div class="panel"><div class="panel-head"><h3>Sınıf Yoklaması Al</h3></div>
     <div class="row">
       <div class="field"><label>Sınıf</label><select id="taCls">${opts(myClasses(),'','id','name','Sınıf seçin')}</select></div>
       <div class="field"><label>Tarih</label><input id="taDate" type="date"></div></div>
     <div id="taRoster" style="margin-top:14px"><div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div></div>
     <button class="btn btn-primary" id="taSave" style="margin-top:14px;display:none">Yoklamayı Kaydet</button>
-    <p class="muted" style="margin-top:8px">Yalnızca “Gelmedi / Geç / İzinli” seçilenler kaydedilir.</p></div>
-    <div class="panel"><div class="panel-head"><h3>Devamsızlık Kayıtları</h3></div>
-      ${tbl(['Tarih','Öğrenci','Sınıf','Durum','Not','İşlem'],rows)}</div>`;
+    <p class="muted" style="margin-top:8px">Her öğrencinin durumu (Geldi / Gelmedi / Geç / İzinli) kaydedilir. “Geldi” sayılarını “Aylık Özet” sekmesinden görebilirsiniz.</p></div>
+    <div class="panel"><div class="panel-head"><h3>Devamsızlık Kayıtları</h3><span class="muted">yalnızca gelmeyen/geç/izinli</span></div>
+      ${tbl(['Tarih','Öğrenci','Sınıf','Durum','Not','İşlem'],rows)}</div></div>
+    <div data-pane="sum" class="hidden">
+      <div class="panel"><div class="panel-head"><h3>Aylık Devam Özeti</h3>
+        <div class="field" style="margin:0"><input id="sumMonth" type="month" value="${curMonth}"></div></div>
+        <p class="muted" style="margin-bottom:12px">Seçilen ayda sınıflarınızdaki her öğrencinin kaç gün geldiği, gelmediği, geç kaldığı veya izinli olduğu listelenir.</p>
+        <div id="sumBody"></div></div></div>`;
 };
 wire.tatt=()=>{
+  $('#content').querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    $('#content').querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+    $('#content').querySelectorAll('[data-pane]').forEach(p=>p.classList.toggle('hidden',p.dataset.pane!==t.dataset.tab));
+  });
   const cs=$('#taCls'); if(cs) cs.onchange=()=>{
     const list=studentsOfClass(cs.value);
     $('#taRoster').innerHTML = cs.value ? rosterStatusTable(list,'ta') : '<div class="empty">Sınıf seçince öğrenci listesi burada çıkar</div>';
@@ -865,9 +954,10 @@ wire.tatt=()=>{
   const sv=$('#taSave'); if(sv) sv.onclick=async()=>{
     if(!$('#taDate').value){ toast('Tarih seçin','err'); return; }
     const records=collectStatus('ta');
-    if(!records.length){ toast('Devamsız işaretlenen öğrenci yok','err'); return; }
+    if(!records.length){ toast('Öğrenci listesi boş','err'); return; }
     try{ const r=await mutate('addAttendanceBulk',{date:$('#taDate').value, records});
-      toast((r.added||0)+' kayıt eklendi'); go('tatt'); }catch(e){ toast(e.message,'err'); } };
+      toast((r.added||0)+' yoklama kaydı eklendi'); go('tatt'); }catch(e){ toast(e.message,'err'); } };
+  const sm=$('#sumMonth'); if(sm){ const draw=()=>{ $('#sumBody').innerHTML=attSummaryTable(STATE.attendance, sm.value, 'student'); }; sm.onchange=draw; draw(); }
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
     try{ await mutate('deleteAttendance',{id:b.dataset.rmatt}); toast('Silindi'); go('tatt'); }catch(e){ toast(e.message,'err'); } });
@@ -879,38 +969,74 @@ wire.tperf=perfSelectorWire;
 /* ================= DENEME TAKİBİ (dershane tarzı) ================= */
 function allSubjectsList(){ return STATE.allSubjects || STATE.subjects || []; }
 function trialSubjName(id){ const s=allSubjectsList().find(x=>x.id===id); return s?s.name:'?'; }
-/* ana liste: denemeler + yeni deneme formu (düzenleyebilenler için) */
+function normName(s){ return String(s||'').toLocaleUpperCase('tr-TR').replace(/\s+/g,' ').trim(); }
+/* Sınav türü şablonları: lise -> TYT/AYT, ortaokul -> LGS. Yanlış katsayısı (div) ve ders+soru şablonu. */
+const TRIAL_TYPES={
+  TYT:{label:'TYT', group:'Lise', div:4, tpl:[
+    {names:['TÜRKÇE'],q:40},{names:['SOSYAL BİLİMLER','SOSYAL'],q:20},
+    {names:['TEMEL MATEMATİK','MATEMATİK'],q:40},{names:['FEN BİLİMLERİ','FEN'],q:20}]},
+  AYT:{label:'AYT', group:'Lise', div:4, tpl:[
+    {names:['MATEMATİK'],q:40},{names:['FİZİK'],q:14},{names:['KİMYA'],q:13},{names:['BİYOLOJİ'],q:13},
+    {names:['EDEBİYAT','TÜRK DİLİ VE EDEBİYATI'],q:24},{names:['TARİH'],q:21},{names:['COĞRAFYA'],q:17}]},
+  LGS:{label:'LGS', group:'Ortaokul', div:3, tpl:[
+    {names:['TÜRKÇE'],q:20},{names:['MATEMATİK'],q:20},{names:['FEN BİLİMLERİ','FEN'],q:20},
+    {names:['İNKILAP','T.C. İNKILAP TARİHİ','SOSYAL'],q:10},{names:['DİN KÜLTÜRÜ','DİN'],q:10},{names:['İNGİLİZCE'],q:10}]},
+  OZEL:{label:'Serbest / Özel', group:'', div:4, tpl:[]}
+};
+function trialTypeLabel(type){ const t=TRIAL_TYPES[type]; return t?(type==='OZEL'?'Özel':type):'Özel'; }
+function trialDivOf(type){ const t=TRIAL_TYPES[type]; return t?t.div:4; }
+function trialNetRule(type){ return 'Net = D − Y/'+trialDivOf(type); }
+function trialTypeBadge(type){ return `<span class="badge acc">${esc(trialTypeLabel(type))}</span>`; }
+/* ana liste: denemeler + yeni deneme formu (yalnızca yönetici) */
 function trialMainHTML(trials, classes, canEdit){
   trials=(trials||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const cards = trials.length ? trials.map(t=>{
-    const avg = t.classAvg!=null?t.classAvg:0;
     const btns = `<button class="btn btn-sm btn-primary" data-trep="${t.id}">Sonuç / Grafik</button>`
       + (canEdit?` <button class="btn btn-sm" data-tent="${t.id}">Sonuç Gir</button> <button class="btn btn-sm btn-danger" data-tdel="${t.id}">Sil</button>`:'');
     return `<div class="panel" style="padding:14px">
-      <div class="panel-head"><h3 style="margin:0">${esc(t.name)}</h3><span class="muted">${esc(t.className||'')} · ${esc(t.date||'')}</span></div>
-      <div class="cards" style="margin:10px 0">${card('Ders Sayısı',(t.subjects||[]).length)}${card('Toplam Soru',t.totalQ||0)}${card('Katılan',t.participants||0)}${card('Sınıf Ort. Puan',avg)}</div>
+      <div class="panel-head"><h3 style="margin:0">${esc(t.name)} ${trialTypeBadge(t.type)}</h3><span class="muted">${esc(t.className||'')} · ${esc(t.date||'')}</span></div>
+      <div class="cards" style="margin:10px 0">${card('Toplam Soru',t.totalQ||0)}${card('Katılan',t.participants||0)}${card('Sınıf Ort. Net',t.classAvgNet!=null?t.classAvgNet:0)}${card('Sınıf Ort. Puan',t.classAvg!=null?t.classAvg:0)}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${btns}</div></div>`;
   }).join('') : '<div class="empty">Henüz deneme eklenmemiş</div>';
   const addBtn = canEdit ? `<button class="btn btn-primary btn-sm" id="trAdd">+ Deneme Ekle</button>` : '';
+  const intro = canEdit
+    ? 'Sınav türünü seçin (liseler için TYT/AYT, ortaokullar için LGS), dersler ve soru sayıları otomatik gelir. Her öğrencinin doğru/yanlış/boş bilgisini girin; net ve tahmini puan otomatik hesaplanır. Sonuç ekranında sıralama ve ders bazında grafikler görünür.'
+    : 'Sadece ilgili sınıflarınıza ait deneme sonuçlarını görüntüleyebilirsiniz. Sonuçları yönetici girer.';
   return `<div class="panel"><div class="panel-head"><h3>Deneme Takibi</h3>${addBtn}</div>
-    <p class="muted">Her deneme için öğretmen ders ders soru sayısını belirler, doğru/yanlış/boş girer; net ve puan otomatik hesaplanır. Sonuç ekranında sıralama ve ders bazında grafikler görünür.</p></div>${cards}`;
+    <p class="muted">${intro}</p></div>${cards}`;
 }
-/* yeni deneme oluşturma formu */
+/* yeni deneme oluşturma formu (sınav türü + şablon) */
 function trialAddModal(classes){
   const subs=allSubjectsList();
+  const typeOpts=Object.keys(TRIAL_TYPES).map(k=>`<option value="${k}">${esc(TRIAL_TYPES[k].label)}${TRIAL_TYPES[k].group?(' – '+TRIAL_TYPES[k].group):''}</option>`).join('');
   openModal('Yeni Deneme',
-   `<div class="field"><label>Deneme Adı</label><input id="tn" placeholder="örn. TYT Deneme 1"></div>
+   `<div class="field"><label>Sınav Türü</label><select id="ttype">${typeOpts}</select></div>
+    <p class="muted" id="truleInfo" style="margin:-4px 0 8px"></p>
+    <div class="field"><label>Deneme Adı</label><input id="tn" placeholder="örn. TYT Deneme 1"></div>
     <div class="field"><label>Sınıf</label><select id="tc">${opts(classes,'','id','name','Sınıf seçin')}</select></div>
     <div class="field"><label>Tarih</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
     <label style="font-weight:600;display:block;margin:10px 0 6px">Dersler ve Soru Sayıları</label>
-    <p class="muted" style="margin-bottom:8px">Dahil etmek istediğiniz derslerin soru sayısını girin (0 = dahil değil).</p>
+    <p class="muted" style="margin-bottom:8px">Sınav türüne göre soru sayıları otomatik dolar; gerekirse değiştirin (0 = dahil değil).</p>
     <div id="tsubs">${subs.map(s=>`<div class="row" style="align-items:center;gap:10px;margin-bottom:6px">
       <div style="flex:1">${esc(s.name)}</div>
-      <input type="number" min="0" style="width:110px" data-sq="${s.id}" placeholder="soru"></div>`).join('')}</div>
+      <input type="number" min="0" style="width:110px" data-sq="${s.id}" data-sn="${esc(normName(s.name))}" placeholder="soru"></div>`).join('')}</div>
     <button class="btn btn-primary btn-block" id="tsv">Oluştur</button>`);
+  const applyTpl=()=>{
+    const type=$('#ttype').value; const def=TRIAL_TYPES[type];
+    $('#truleInfo').textContent = def.group ? (def.group+' sınavı — '+trialNetRule(type)) : trialNetRule(type);
+    document.querySelectorAll('[data-sq]').forEach(inp=>{ inp.value=''; });
+    (def.tpl||[]).forEach(item=>{
+      for(const inp of document.querySelectorAll('[data-sq]')){
+        if(item.names.map(normName).includes(inp.dataset.sn)){ inp.value=item.q; break; }
+      }
+    });
+    if(!$('#tn').value){ const cls=$('#tc'); const cn=cls&&cls.selectedIndex>0?cls.options[cls.selectedIndex].text:''; }
+  };
+  $('#ttype').onchange=applyTpl; applyTpl();
   $('#tsv').onclick=async()=>{
+    const type=$('#ttype').value;
     const subjects=[...document.querySelectorAll('[data-sq]')].map(i=>({subjectId:i.dataset.sq,qCount:Number(i.value)||0})).filter(s=>s.qCount>0);
-    try{ await mutate('addTrial',{name:$('#tn').value.trim(),classId:$('#tc').value,date:$('#td').value,subjects});
+    try{ await mutate('addTrial',{name:$('#tn').value.trim(),type,classId:$('#tc').value,date:$('#td').value,subjects});
       closeModal(); toast('Deneme oluşturuldu'); go(PAGE); }catch(e){ toast(e.message,'err'); }
   };
 }
@@ -928,9 +1054,9 @@ function trialEnterHTML(t){
     }).join('');
     return `<tr><td style="text-align:left"><b>${esc(r.studentName)}</b></td>${cells}</tr>`;
   }).join('');
-  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} – Sonuç Girişi</h3>
+  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} ${trialTypeBadge(t.type)} – Sonuç Girişi</h3>
       <div style="display:flex;gap:8px"><button class="btn btn-sm" id="trBack">← Geri</button><button class="btn btn-primary btn-sm" id="trSave">Kaydet</button></div></div>
-    <p class="muted" style="margin-bottom:10px">${esc(t.className||'')} · Her ders için Doğru / Yanlış / Boş girin. Net = D − Y/4. Boş bırakılan öğrenci sıralamaya girmez.</p>
+    <p class="muted" style="margin-bottom:10px">${esc(t.className||'')} · Her ders için Doğru / Yanlış / Boş girin. ${trialNetRule(t.type)}. Boş bırakılan öğrenci sıralamaya girmez.</p>
     <div class="table-wrap ekboard"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
 /* sonuç + sıralama + ders bazında grafik ekranı */
@@ -950,7 +1076,7 @@ function trialReportHTML(t, readOnlyMine){
         <div class="table-wrap"><table><thead><tr><th style="text-align:left">Ders</th><th>D</th><th>Y</th><th>B</th><th>Net</th></tr></thead><tbody>${rowCells}</tbody></table></div>`;
     }
   } else {
-    const ranked=(t.rows||[]).filter(r=>r.hasData).sort((a,b)=>b.puan-a.puan);
+    const ranked=(t.rows||[]).filter(r=>r.hasData).sort((a,b)=>b.totalNet-a.totalNet);
     if(!ranked.length){ tableHTML='<div class="empty">Henüz sonuç girilmemiş</div>'; }
     else {
       const head=`<th>Sıra</th><th style="text-align:left">Öğrenci</th>`+subs.map(s=>`<th>${esc(s.subjectName)}<br><span class="muted">net</span></th>`).join('')+`<th>Toplam Net</th><th>Puan</th>`;
@@ -961,9 +1087,9 @@ function trialReportHTML(t, readOnlyMine){
       tableHTML=`<div class="table-wrap ekboard"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
     }
   }
-  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} – Sonuç</h3>
+  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} ${trialTypeBadge(t.type)} – Sonuç</h3>
       <div style="display:flex;gap:8px"><button class="btn btn-sm" id="trBack">← Geri</button></div></div>
-    <p class="muted">${esc(t.className||'')} · ${esc(t.date||'')} · Toplam ${t.totalQ||0} soru · ${t.participants||0} katılımcı</p></div>
+    <p class="muted">${esc(t.className||'')} · ${esc(t.date||'')} · Toplam ${t.totalQ||0} soru · ${t.participants||0} katılımcı · ${trialNetRule(t.type)} · Puan 100–500 (tahmini)</p></div>
     <div class="panel"><div class="panel-head"><h3>Ders Bazında Ortalama Net</h3></div>${chart}</div>
     <div class="panel"><div class="panel-head"><h3>${readOnlyMine?'Çocuğumun Sonucu':'Sıralama'}</h3></div>${tableHTML}</div>`;
 }
@@ -1010,8 +1136,8 @@ function wireTrials(trials, classes, canEdit){
 }
 VIEWS.trials=()=>renderTrials(STATE.trials, STATE.classes||[], true, false);
 wire.trials=()=>wireTrials(STATE.trials, STATE.classes||[], true);
-VIEWS.ttrials=()=>renderTrials(STATE.trials, myClasses(), true, false);
-wire.ttrials=()=>wireTrials(STATE.trials, myClasses(), true);
+VIEWS.ttrials=()=>renderTrials(STATE.trials, myClasses(), false, false);
+wire.ttrials=()=>wireTrials(STATE.trials, myClasses(), false);
 VIEWS.ptrials=()=>renderTrials(STATE.trials, [], false, true);
 wire.ptrials=()=>wireTrials(STATE.trials, [], false);
 
@@ -1026,9 +1152,10 @@ VIEWS.pchild=()=>{
 };
 VIEWS.psched=()=>schedHTML(STATE.schedule);
 VIEWS.phw=()=>{
-  const rows=(STATE.grades.homework||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(h=>
-    [esc(h.date),esc(h.subjectName),`<span class="badge ok">D ${esc(h.dogru)}</span> <span class="badge err">Y ${esc(h.yanlis)}</span> <span class="badge warn">B ${esc(h.bos)}</span>`]);
-  return `<div class="panel"><div class="panel-head"><h3>Ödev Sonuçları</h3></div>${tbl(['Tarih','Ders','Sonuç'],rows)}</div>`;
+  return `<div class="panel"><div class="panel-head"><h3>Ödev Sonuçları</h3>
+    <span class="muted">tarihe göre gruplu</span></div>
+    <p class="muted">Çocuğunuzun ödev sonuçları tarih tarih aşağıda özetlenmiştir.</p></div>`
+    + hwGrouped(STATE.grades.homework, 'parent');
 };
 VIEWS.passign=()=>{
   const rows=(STATE.assignments||[]).slice().reverse().map(a=>[esc(a.dueDate||'—'),esc(a.subjectName),esc(a.title),esc(a.desc||'')]);
@@ -1046,11 +1173,29 @@ VIEWS.pperf=()=>{
     <p class="muted">Her ders için sınav ortalaması ve ödev başarı oranı aşağıda gösterilmektedir.</p></div>`+board+perfCards(rows);
 };
 VIEWS.patt=()=>{
-  const recs=(STATE.attendance||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const all=STATE.attendance||[];
+  const curMonth=new Date().toISOString().slice(0,7);
+  // detayda yalnızca devamsızlık (geldi dışı); “geldi” sayıları aylık özette
+  const recs=all.filter(a=>a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const rows=recs.map(a=>[esc(a.date),attBadge(a.status),esc(a.note||'')]);
-  return `<div class="panel"><div class="panel-head"><h3>Devamsızlık</h3></div>
-    <p class="muted" style="margin-bottom:12px">Çocuğunuzun kayıtlı devamsızlık bilgileri aşağıda listelenmiştir.</p>
-    ${tbl(['Tarih','Durum','Not'],rows)}</div>`;
+  return `<div class="tabs"><button class="tab active" data-tab="det">Devamsızlık</button>
+      <button class="tab" data-tab="sum">Aylık Özet</button></div>
+    <div data-pane="det">
+      <div class="panel"><div class="panel-head"><h3>Devamsızlık Kayıtları</h3><span class="muted">yalnızca gelmeyen/geç/izinli</span></div>
+        <p class="muted" style="margin-bottom:12px">Çocuğunuzun gelmediği, geç kaldığı veya izinli olduğu günler aşağıda listelenmiştir. “Geldi” günlerini “Aylık Özet” sekmesinden görebilirsiniz.</p>
+        ${tbl(['Tarih','Durum','Not'],rows)}</div></div>
+    <div data-pane="sum" class="hidden">
+      <div class="panel"><div class="panel-head"><h3>Aylık Devam Özeti</h3>
+        <input id="sumMonth" type="month" value="${curMonth}"></div>
+        <p class="muted" style="margin-bottom:12px">Seçilen ayda çocuğunuzun kaç derse geldiği, kaçına geç/izinli/gelmedi olduğu aşağıda gösterilir.</p>
+        <div id="sumBody"></div></div></div>`;
+};
+wire.patt=()=>{
+  $('#content').querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    $('#content').querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+    $('#content').querySelectorAll('[data-pane]').forEach(p=>p.classList.toggle('hidden',p.dataset.pane!==t.dataset.tab));
+  });
+  const sm=$('#sumMonth'); if(sm){ const draw=()=>{ $('#sumBody').innerHTML=attSummaryTable(STATE.attendance, sm.value, 'student'); }; sm.onchange=draw; draw(); }
 };
 
 /* ---- otomatik oturum ---- */
