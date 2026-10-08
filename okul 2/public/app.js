@@ -93,6 +93,16 @@ function go(p){
   $('#pageTitle').textContent=title;
   $('#content').innerHTML = fn ? fn() : '<div class="empty">Sayfa bulunamadı</div>';
   if(wire[p]) wire[p]();
+  enableDatePickers();
+}
+/* Telefonda tarih kutusuna dokununca takvimin açılmasını garanti et */
+function enableDatePickers(){
+  document.querySelectorAll('input[type="date"],input[type="month"]').forEach(el=>{
+    if(el._dp) return; el._dp=true;
+    const open=()=>{ try{ if(el.showPicker) el.showPicker(); }catch(e){} };
+    el.addEventListener('click', open);
+    el.addEventListener('focus', open);
+  });
 }
 async function refresh(){ const s=await api('/api/state'); STATE=s; go(PAGE); }
 
@@ -525,6 +535,23 @@ function attSummaryTable(records, month, kind){
   });
   return tbl(head, body);
 }
+/* Devamsızlık düzeltme modalı (yönetici + öğretmen) */
+function attEditModal(id, backPage){
+  const rec=(STATE.attendance||[]).find(a=>a.id===id);
+  if(!rec){ toast('Kayıt bulunamadı','err'); return; }
+  openModal('Devamsızlığı Düzelt',
+    `<p class="muted" style="margin-bottom:12px">${esc(rec.date||'')} · ${esc(rec.who||'')}${rec.className?(' · '+esc(rec.className)):''}</p>
+     <div class="field"><label>Durum</label><select id="aeSt">
+       <option value="geldi">Geldi</option><option value="yok">Gelmedi</option>
+       <option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></div>
+     <div class="field"><label>Not</label><input id="aeNt" value="${esc(rec.note||'')}" placeholder="not (isteğe bağlı)"></div>
+     <button class="btn btn-primary btn-block" id="aeSave">Kaydet</button>`);
+  $('#aeSt').value=rec.status;
+  $('#aeSave').onclick=async()=>{
+    try{ await mutate('updateAttendance',{id, status:$('#aeSt').value, note:$('#aeNt').value.trim()});
+      closeModal(); toast('Devamsızlık güncellendi'); go(backPage); }catch(e){ toast(e.message,'err'); }
+  };
+}
 VIEWS.att=()=>{
   const all=STATE.attendance||[];
   const curMonth=new Date().toISOString().slice(0,7);
@@ -532,9 +559,9 @@ VIEWS.att=()=>{
   const stu=all.filter(a=>a.kind==='student' && a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tea=all.filter(a=>a.kind==='teacher' && a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const stuRows=stu.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
-    `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
+    `<button class="btn btn-sm" data-edatt="${a.id}">Düzelt</button> <button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
   const teaRows=tea.map(a=>[esc(a.date),esc(a.who),attBadge(a.status),esc(a.note||''),
-    `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
+    `<button class="btn btn-sm" data-edatt="${a.id}">Düzelt</button> <button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
   const teaList=(STATE.teachers||[]).map((t,i)=>`<tr><td>${i+1}</td><td><b>${esc(t.name)}</b></td>
     <td><select class="ta-st" data-id="${t.id}"><option value="geldi">Geldi</option><option value="yok">Gelmedi</option>
       <option value="gec">Geç Geldi</option><option value="izinli">İzinli</option></select></td>
@@ -596,6 +623,7 @@ wire.att=()=>{
       $('#content').querySelector('.tab[data-tab="tea"]').click(); }catch(e){ toast(e.message,'err'); } };
   // aylık özet
   const sm=$('#sumMonth'); if(sm){ const draw=()=>{ $('#sumBody').innerHTML=attSummaryTable(STATE.attendance, sm.value, 'student'); }; sm.onchange=draw; draw(); }
+  $('#content').querySelectorAll('[data-edatt]').forEach(b=>b.onclick=()=>attEditModal(b.dataset.edatt,'att'));
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
     try{ await mutate('deleteAttendance',{id:b.dataset.rmatt}); toast('Silindi'); go('att'); }catch(e){ toast(e.message,'err'); } });
@@ -664,7 +692,7 @@ VIEWS.audit=()=>{
     addPaymentRecord:'Ödeme kaydı ekleme',addPayment:'Tahsilat ekleme',setPaymentDue:'Ücret düzenleme',
     deletePayment:'Ödeme kaydı silme',deletePaymentInstallment:'Tahsilat silme',
     addSchedSheet:'Program ekleme',deleteSchedSheet:'Program silme',setSchedSlot:'Ders ekleme/düzenleme',deleteSchedSlot:'Ders silme',
-    addAttendance:'Öğrenci devamsızlığı',addTeacherAttendance:'Öğretmen devamsızlığı',deleteAttendance:'Devamsızlık silme',
+    addAttendance:'Öğrenci devamsızlığı',addTeacherAttendance:'Öğretmen devamsızlığı',deleteAttendance:'Devamsızlık silme',updateAttendance:'Devamsızlık düzeltme',
     addAttendanceBulk:'Toplu öğrenci yoklaması',addTeacherAttendanceBulk:'Toplu öğretmen yoklaması',
     addHomeworkBulk:'Toplu ödev sonucu',addExamBulk:'Toplu sınav notu'};
   const rows=(STATE.audit||[]).map(a=>[
@@ -922,7 +950,7 @@ VIEWS.tatt=()=>{
   const curMonth=new Date().toISOString().slice(0,7);
   const recs=(STATE.attendance||[]).filter(a=>a.status!=='geldi').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const rows=recs.map(a=>[esc(a.date),esc(a.who),esc(a.className||''),attBadge(a.status),esc(a.note||''),
-    `<button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
+    `<button class="btn btn-sm" data-edatt="${a.id}">Düzelt</button> <button class="btn btn-sm btn-danger" data-rmatt="${a.id}">Sil</button>`]);
   return `<div class="tabs"><button class="tab active" data-tab="al">Yoklama Al</button>
       <button class="tab" data-tab="sum">Aylık Özet</button></div>
     <div data-pane="al">
@@ -958,6 +986,7 @@ wire.tatt=()=>{
     try{ const r=await mutate('addAttendanceBulk',{date:$('#taDate').value, records});
       toast((r.added||0)+' yoklama kaydı eklendi'); go('tatt'); }catch(e){ toast(e.message,'err'); } };
   const sm=$('#sumMonth'); if(sm){ const draw=()=>{ $('#sumBody').innerHTML=attSummaryTable(STATE.attendance, sm.value, 'student'); }; sm.onchange=draw; draw(); }
+  $('#content').querySelectorAll('[data-edatt]').forEach(b=>b.onclick=()=>attEditModal(b.dataset.edatt,'tatt'));
   $('#content').querySelectorAll('[data-rmatt]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Bu devamsızlık kaydını silmek istiyor musunuz?')) return;
     try{ await mutate('deleteAttendance',{id:b.dataset.rmatt}); toast('Silindi'); go('tatt'); }catch(e){ toast(e.message,'err'); } });

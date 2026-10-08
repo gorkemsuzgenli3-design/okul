@@ -26,6 +26,11 @@ input,select,textarea{background:var(--bg2);border:1px solid var(--line);color:v
   border-radius:10px;padding:10px 12px;font-size:.95rem;width:100%;font-family:inherit}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
 textarea{resize:vertical;min-height:70px}
+/* ---- Tarih kutuları (telefon dostu) ---- */
+input[type="date"],input[type="month"]{min-height:46px;line-height:1.2;cursor:pointer;-webkit-appearance:none;appearance:none}
+input[type="date"]::-webkit-date-and-time-value,input[type="month"]::-webkit-date-and-time-value{text-align:left}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.8);opacity:.9;cursor:pointer;padding:4px;margin-left:4px}
 
 /* ---- BUTTONS ---- */
 .btn{border:none;border-radius:10px;padding:10px 16px;font-size:.9rem;font-weight:600;cursor:pointer;

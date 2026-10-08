@@ -467,6 +467,17 @@ function handleMutate(u, body){
         if(!can){ const e=new Error('Bu kayıt için yetkiniz yok'); e.code=403; throw e; }
       }
       DB.attendance=DB.attendance.filter(x=>x.id!==body.id); audit(u,'deleteAttendance',rec.id); return {ok:true}; }
+    case 'updateAttendance': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok'); need(body.id,'Eksik alan');
+      const rec=byId(DB.attendance,body.id); need(rec,'Kayıt bulunamadı');
+      if(u.role==='teacher'){
+        if(rec.kind!=='student'){ const e=new Error('Yetkiniz yok'); e.code=403; throw e; }
+        const can=(u.teach||[]).some(t=>t.classIds.includes(rec.classId));
+        if(!can){ const e=new Error('Bu kayıt için yetkiniz yok'); e.code=403; throw e; }
+      }
+      if(body.status!=null){ const status=['geldi','yok','gec','izinli'].includes(body.status)?body.status:null; need(status,'Geçersiz durum'); rec.status=status; }
+      if(body.note!=null) rec.note=String(body.note||'');
+      rec.by=u.name; rec.at=nowISO();
+      audit(u,'updateAttendance',rec.id+' → '+rec.status); return {ok:true}; }
 
     /* ---- TOPLU GİRİŞ (sınıf listesi üzerinden) ---- */
     case 'addAttendanceBulk': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
