@@ -31,6 +31,7 @@ function loadDB(){
   else { DB = buildSeed(); saveDB(); console.log('Yeni veritabani olusturuldu:', DB_FILE); }
   // Eski veritabanlari icin guvenli gecis (devamsizlik alani yoksa ekle)
   if(DB && !Array.isArray(DB.attendance)) DB.attendance = [];
+  if(DB && !Array.isArray(DB.trials)) DB.trials = [];   // deneme (trial) takibi
 }
 function backupDB(){
   try{
@@ -100,7 +101,7 @@ function buildSeed(){
   const db = { meta:{ secret:crypto.randomBytes(32).toString('hex'), created:nowISO(), excludeAdminSubjects:['Matematik'] },
     subjects:[], classes:[], students:[], users:[],
     grades:{homework:[], exam:[]}, assignments:[], attendance:[],
-    schedule:{}, payments:[], audit:[] };
+    schedule:{}, payments:[], audit:[], trials:[] };
 
   const subjNames=['Matematik','Fizik','İngilizce','Sosyal','Coğrafya','Türkçe','Edebiyat','Fen'];
   const subjId={}; subjNames.forEach(n=>{const id=uid('s');db.subjects.push({id,name:n});subjId[n]=id;});
@@ -166,7 +167,8 @@ function buildSeed(){
 /* ---------------- Rol / goruntuleme yardimcilari ---------------- */
 function publicUser(u){
   const o = { id:u.id, role:u.role, name:u.name, username:u.username,
-    active: u.active!==false, mustChange: !!u.mustChangePassword };
+    active: u.active!==false, mustChange: !!u.mustChangePassword,
+    phone: u.phone||'', email: u.email||'' };
   if(u.studentId) o.studentId = u.studentId;
   if(u.teach) o.teach = u.teach;
   if(u.scheduleSheet) o.scheduleSheet = u.scheduleSheet;
@@ -184,6 +186,43 @@ function enrichAtt(r){
 }
 function adminSubjects(){ const ex=DB.meta.excludeAdminSubjects||[]; return DB.subjects.filter(s=>!ex.includes(s.name)); }
 
+/* ---- Deneme (trial) hesaplama ve zenginlestirme ---- */
+function trialNet(d,y){ const net=(Number(d)||0) - (Number(y)||0)/4; return Math.round(net*100)/100; }
+function enrichTrial(t){
+  const subs=(t.subjects||[]).map(s=>({subjectId:s.subjectId, subjectName:subjName(s.subjectId), qCount:Number(s.qCount)||0}));
+  const totalQ=subs.reduce((a,s)=>a+s.qCount,0);
+  const resById={}; (t.results||[]).forEach(r=>{ resById[r.studentId]=r.cells||{}; });
+  const stus=DB.students.filter(s=>s.classId===t.classId);
+  let rows=stus.map(stu=>{
+    const cells=resById[stu.id]||{};
+    let totalNet=0, hasData=false;
+    const out={};
+    subs.forEach(s=>{
+      const c=cells[s.subjectId];
+      if(c && (c.d!=null||c.y!=null||c.b!=null)){
+        const d=Number(c.d)||0, y=Number(c.y)||0, b=Number(c.b)||0, net=trialNet(d,y);
+        out[s.subjectId]={d,y,b,net}; totalNet+=net; hasData=true;
+      } else { out[s.subjectId]=null; }
+    });
+    totalNet=Math.round(totalNet*100)/100;
+    const puan = totalQ>0 ? Math.max(0, Math.round(totalNet/totalQ*1000)/10) : 0;
+    return {studentId:stu.id, studentName:stu.name, cells:out, totalNet, totalQ, puan, hasData};
+  });
+  // siralama (puana gore) + sira numarasi; sadece veri girilenler siralanir
+  const ranked=rows.filter(r=>r.hasData).sort((a,b)=>b.puan-a.puan);
+  ranked.forEach((r,i)=>{ r.rank=i+1; });
+  const participants=ranked.length;
+  const classAvg = participants? Math.round(ranked.reduce((a,r)=>a+r.puan,0)/participants*10)/10 : 0;
+  // subject bazinda ortalama net (grafik icin)
+  const subjAvg=subs.map(s=>{
+    const vals=ranked.map(r=>r.cells[s.subjectId]).filter(Boolean).map(c=>c.net);
+    const avg=vals.length? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100 : 0;
+    return {subjectId:s.subjectId, subjectName:s.subjectName, qCount:s.qCount, avgNet:avg};
+  });
+  return {id:t.id, name:t.name, classId:t.classId, className:className(t.classId), date:t.date,
+    subjects:subs, totalQ, rows, participants, classAvg, subjAvg};
+}
+
 function teacherCan(u, subjectId, classId){
   if(!u.teach) return false;
   const t = u.teach.find(x=>x.subjectId===subjectId);
@@ -194,7 +233,7 @@ function teacherCan(u, subjectId, classId){
 /* Role gore state uretimi */
 function buildState(u){
   const st = { user: publicUser(u), subjects:[], classes:DB.classes, students:[],
-    grades:{homework:[]}, exams:[], assignments:[], schedule:{}, payments:[], attendance:[], users:[] };
+    grades:{homework:[]}, exams:[], assignments:[], schedule:{}, payments:[], attendance:[], users:[], trials:[] };
 
   if(u.role==='admin'){
     st.subjects = adminSubjects();
@@ -208,6 +247,7 @@ function buildState(u){
     st.allSubjects = DB.subjects; // iç referans (atama kontrolü için)
     st.attendance = (DB.attendance||[]).map(enrichAtt);
     st.teachers = DB.users.filter(x=>x.role==='teacher').map(x=>({id:x.id, name:x.name}));
+    st.trials = (DB.trials||[]).map(enrichTrial);
     st.audit = (DB.audit||[]).slice(-120).reverse(); // son islemler
   } else if(u.role==='teacher'){
     const mySubIds = (u.teach||[]).map(t=>t.subjectId);
@@ -220,6 +260,7 @@ function buildState(u){
     st.assignments = DB.assignments.filter(a=>mySubIds.includes(a.subjectId));
     if(u.scheduleSheet && DB.schedule[u.scheduleSheet]) st.schedule[u.scheduleSheet]=DB.schedule[u.scheduleSheet];
     st.attendance = (DB.attendance||[]).filter(r=>r.kind==='student' && myClassIds.has(r.classId)).map(enrichAtt);
+    st.trials = (DB.trials||[]).filter(t=>myClassIds.has(t.classId)).map(enrichTrial);
   } else if(u.role==='parent'){
     const child = byId(DB.students, u.studentId);
     st.child = child ? {...child, className:className(child.classId)} : null;
@@ -237,6 +278,14 @@ function buildState(u){
           st.schedule[k]=DB.schedule[k];
       });
       st.attendance = (DB.attendance||[]).filter(r=>r.kind==='student' && r.studentId===child.id).map(enrichAtt);
+      // deneme sonuclari: sadece cocugun satiri (gizlilik) + sinif ortalamasi/sirasi
+      st.trials = (DB.trials||[]).filter(t=>t.classId===child.classId).map(enrichTrial)
+        .map(t=>{
+          const mine=t.rows.find(r=>r.studentId===child.id)||null;
+          return {id:t.id, name:t.name, className:t.className, date:t.date, subjects:t.subjects,
+            totalQ:t.totalQ, participants:t.participants, classAvg:t.classAvg, subjAvg:t.subjAvg,
+            mine};
+        });
     }
     st.subjects = DB.subjects;
   }
@@ -312,6 +361,27 @@ function handleMutate(u, body){
       tu.active = !!body.active;
       if(!tu.active) tu.tokenVersion = (tu.tokenVersion||1)+1; // pasifte oturumu kes
       audit(u,'setActive',tu.username+'='+tu.active); return {ok:true}; }
+
+    /* ---- ADMIN: BILGI GUNCELLEME ---- */
+    case 'updateStudent': { adminOnly(); need(body.studentId,'Eksik alan');
+      const stu=byId(DB.students,body.studentId); need(stu,'Öğrenci bulunamadı');
+      if(body.name!=null){ need(String(body.name).trim(),'İsim boş olamaz'); stu.name=String(body.name).trim(); }
+      if(body.classId!=null){ need(byId(DB.classes,body.classId),'Sınıf bulunamadı'); stu.classId=body.classId; }
+      if(body.no!=null) stu.no=String(body.no).trim();
+      if(body.veliTel!=null) stu.veliTel=String(body.veliTel).trim();
+      if(body.dogum!=null) stu.dogum=String(body.dogum).trim();
+      audit(u,'updateStudent',stu.name); return {ok:true}; }
+    case 'updateUser': { adminOnly(); need(body.userId,'Eksik alan');
+      const tu=byId(DB.users,body.userId); need(tu,'Kullanıcı bulunamadı');
+      if(body.name!=null){ need(String(body.name).trim(),'İsim boş olamaz'); tu.name=String(body.name).trim(); }
+      if(body.username!=null){ const un=String(body.username).trim(); need(un,'Kullanıcı adı boş olamaz');
+        if(DB.users.some(x=>x.username===un && x.id!==tu.id)){ const e=new Error('Bu kullanıcı adı alınmış'); e.code=400; throw e; }
+        tu.username=un; }
+      if(body.phone!=null) tu.phone=String(body.phone).trim();
+      if(body.email!=null) tu.email=String(body.email).trim();
+      if(tu.role==='parent' && body.studentId!=null){ need(byId(DB.students,body.studentId),'Öğrenci bulunamadı'); tu.studentId=body.studentId; }
+      if(tu.role==='teacher' && typeof body.scheduleSheet==='string') tu.scheduleSheet=body.scheduleSheet;
+      audit(u,'updateUser',tu.username); return {ok:true}; }
 
     /* ---- ADMIN: ÖDEMELER ---- */
     case 'addPaymentRecord': { adminOnly(); need(body.isim,'İsim gerekli');
@@ -436,6 +506,47 @@ function handleMutate(u, body){
       }
       audit(u,'addExamBulk',body.name+' ('+added+' kayıt)'); return {ok:true, added}; }
 
+    /* ---- DENEME (TRIAL) TAKIBI ---- */
+    case 'addTrial': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.name && body.classId && Array.isArray(body.subjects) && body.subjects.length,'Deneme adı, sınıf ve ders bilgisi gerekli');
+      need(byId(DB.classes,body.classId),'Sınıf bulunamadı');
+      if(u.role==='teacher'){ const can=(u.teach||[]).some(t=>t.classIds.includes(body.classId));
+        if(!can){ const e=new Error('Bu sınıf için yetkiniz yok'); e.code=403; throw e; } }
+      const subs=body.subjects.map(s=>({subjectId:s.subjectId, qCount:Math.max(0,Number(s.qCount)||0)}))
+        .filter(s=>byId(DB.subjects,s.subjectId) && s.qCount>0);
+      need(subs.length,'En az bir ders ve soru sayısı girin');
+      const t={id:uid('tr'), name:String(body.name).trim(), classId:body.classId,
+        date:(body.date||nowISO().slice(0,10)), subjects:subs, results:[], by:u.name, at:nowISO()};
+      DB.trials.push(t); audit(u,'addTrial',t.name); return {ok:true, id:t.id}; }
+    case 'deleteTrial': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok'); need(body.trialId,'Eksik alan');
+      const t=byId(DB.trials,body.trialId); need(t,'Deneme bulunamadı');
+      if(u.role==='teacher'){ const can=(u.teach||[]).some(x=>x.classIds.includes(t.classId));
+        if(!can){ const e=new Error('Yetkiniz yok'); e.code=403; throw e; } }
+      DB.trials=DB.trials.filter(x=>x.id!==body.trialId); audit(u,'deleteTrial',t.name); return {ok:true}; }
+    case 'saveTrialResults': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
+      need(body.trialId && Array.isArray(body.records),'Eksik alan');
+      const t=byId(DB.trials,body.trialId); need(t,'Deneme bulunamadı');
+      if(u.role==='teacher'){ const can=(u.teach||[]).some(x=>x.classIds.includes(t.classId));
+        if(!can){ const e=new Error('Yetkiniz yok'); e.code=403; throw e; } }
+      const subIds=new Set(t.subjects.map(s=>s.subjectId));
+      let saved=0;
+      for(const r of body.records){
+        const stu=byId(DB.students,r.studentId); if(!stu || stu.classId!==t.classId) continue;
+        const cells={}; let any=false;
+        const inc=r.cells||{};
+        for(const sid of Object.keys(inc)){
+          if(!subIds.has(sid)) continue; const c=inc[sid]||{};
+          const d=c.d, y=c.y, b=c.b;
+          if(d===''&&y===''&&b==='') continue;
+          if(d==null&&y==null&&b==null) continue;
+          cells[sid]={d:Number(d)||0, y:Number(y)||0, b:Number(b)||0}; any=true;
+        }
+        const ex=t.results.find(x=>x.studentId===stu.id);
+        if(any){ if(ex) ex.cells=cells; else t.results.push({studentId:stu.id, cells}); saved++; }
+        else if(ex){ t.results=t.results.filter(x=>x.studentId!==stu.id); }
+      }
+      audit(u,'saveTrialResults',t.name+' ('+saved+' öğrenci)'); return {ok:true, saved}; }
+
     /* ---- TEACHER ---- */
     case 'addHomework': { need(u.role==='teacher' || u.role==='admin','Yetkiniz yok');
       need(body.subjectId && body.classId && body.studentId && body.date,'Eksik alan');
@@ -469,6 +580,10 @@ function handleMutate(u, body){
       Object.assign(u, hashPassword(body.newPassword));
       u.mustChangePassword = false;
       audit(u,'changeOwnPassword',u.username); return {ok:true}; }
+    case 'updateOwnProfile': { need(u.role==='teacher' || u.role==='parent','Yetkiniz yok');
+      if(body.phone!=null) u.phone=String(body.phone).trim();
+      if(body.email!=null) u.email=String(body.email).trim();
+      audit(u,'updateOwnProfile',u.username); return {ok:true}; }
 
     default: { const e=new Error('Bilinmeyen islem: '+a); e.code=400; throw e; }
   }

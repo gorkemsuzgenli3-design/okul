@@ -76,9 +76,9 @@ async function boot(){
 }
 function buildNav(){
   const menus={
-    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['perf','Başarı Durumu'],['att','Devamsızlık'],['sched','Ders Programları'],['pay','Ödemeler'],['audit','İşlem Kayıtları']],
-    teacher:[['tgenel','Panelim'],['tgive','Ödev Ver'],['thw','Ödev Sonuçları'],['texam','Sınav Notları'],['tperf','Başarı Durumu'],['tatt','Devamsızlık'],['tsched','Programım']],
-    parent:[['pchild','Çocuğum'],['psched','Ders Programı'],['phw','Ödev Sonuçları'],['passign','Verilen Ödevler'],['pexam','Sınav Notları'],['pperf','Başarı Durumu'],['patt','Devamsızlık']]
+    admin:[['genel','Genel Bakış'],['teachers','Öğretmenler'],['people','Öğrenci / Veli'],['struct','Sınıf & Ders'],['homework','Ödev Takibi'],['assign','Verilen Ödevler'],['exams','Sınav Notları'],['perf','Karne / Başarı'],['trials','Deneme Takibi'],['att','Devamsızlık'],['sched','Ders Programları'],['pay','Ödemeler'],['audit','İşlem Kayıtları']],
+    teacher:[['tgenel','Panelim'],['tgive','Ödev Ver'],['thw','Ödev Sonuçları'],['texam','Sınav Notları'],['tperf','Karne / Başarı'],['ttrials','Deneme Takibi'],['tatt','Devamsızlık'],['tsched','Programım']],
+    parent:[['pchild','Çocuğum'],['psched','Ders Programı'],['phw','Ödev Sonuçları'],['passign','Verilen Ödevler'],['pexam','Sınav Notları'],['pperf','Karne / Başarı'],['ptrials','Deneme Sonuçları'],['patt','Devamsızlık']]
   };
   const items=menus[ME.role]||[];
   $('#nav').innerHTML=items.map(([k,t])=>`<a data-p="${k}">${t}</a>`).join('');
@@ -86,6 +86,7 @@ function buildNav(){
   go(items[0][0]);
 }
 function go(p){
+  if(p!==PAGE && !['trials','ttrials','ptrials'].includes(p)) TRIAL_VIEW={id:'',mode:'main'};
   PAGE=p;
   $('#nav').querySelectorAll('a').forEach(a=>a.classList.toggle('active',a.dataset.p===p));
   const fn=VIEWS[p]; const title=(($('#nav a[data-p="'+p+'"]')||{}).textContent)||'Panel';
@@ -100,6 +101,7 @@ function opts(arr,sel,valKey='id',txtKey='name',ph){
   return (ph?`<option value="">${ph}</option>`:'')+arr.map(o=>`<option value="${o[valKey]}" ${o[valKey]===sel?'selected':''}>${esc(o[txtKey])}</option>`).join('');
 }
 const VIEWS={}; const wire={};
+let TRIAL_VIEW={id:'', mode:'main'}; /* deneme takibi ekran durumu */
 
 /* ---- ortak yardimcilar ---- */
 function card(k,v){ return `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`; }
@@ -192,27 +194,72 @@ function examAvgSummary(exams){
   }).join('');
   return `<div class="cards">${card('Genel Ortalama', overall.toFixed(1))}${cards}</div>`;
 }
-/* y&ouml;netici/öğretmen: sınıf+öğrenci seçerek ders bazında başarı */
+/* e-okul tarzı karne tablosu: öğrenci satırları × ders ortalama sütunları */
+function gradeBoard(exams, students){
+  exams=exams||[]; students=students||[];
+  if(!students.length) return '<div class="empty">Bu sınıfta öğrenci yok</div>';
+  const subjSet=[];
+  exams.forEach(e=>{ const n=e.subjectName||'—'; if(!subjSet.includes(n)) subjSet.push(n); });
+  subjSet.sort((a,b)=>a.localeCompare(b,'tr'));
+  if(!subjSet.length) return '<div class="empty">Henüz sınav notu girilmemiş</div>';
+  const rows=students.map(s=>{
+    const his=exams.filter(e=>e.studentId===s.id);
+    const bySub={}; subjSet.forEach(sn=>bySub[sn]=[]); const allScores=[];
+    his.forEach(e=>{ const n=num(e.score); if(n==null) return; const sn=e.subjectName||'—';
+      if(bySub[sn]) bySub[sn].push(n); allScores.push(n); });
+    const subAvgs={}; subjSet.forEach(sn=>{ const arr=bySub[sn]; subAvgs[sn]=arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null; });
+    const overall=allScores.length?allScores.reduce((a,b)=>a+b,0)/allScores.length:null;
+    return {student:s, subAvgs, overall};
+  });
+  const ranked=rows.slice().sort((a,b)=>{ if(a.overall==null&&b.overall==null) return 0; if(a.overall==null) return 1; if(b.overall==null) return -1; return b.overall-a.overall; });
+  const rankMap={}; ranked.forEach((r,i)=>{ if(r.overall!=null) rankMap[r.student.id]=i+1; });
+  const head=`<th>Sıra</th><th>Öğrenci</th>${subjSet.map(sn=>`<th>${esc(sn)}</th>`).join('')}<th>Genel Ort.</th>`;
+  const body=ranked.map(r=>{
+    const cells=subjSet.map(sn=>{ const v=r.subAvgs[sn]; return `<td>${v!=null?`<span class="gr ${gradeCls(v)}">${v.toFixed(1)}</span>`:'<span class="muted">—</span>'}</td>`; }).join('');
+    const ov=r.overall, rank=rankMap[r.student.id];
+    return `<tr><td>${rank?('<b>'+rank+'</b>'):'—'}</td><td style="text-align:left"><b>${esc(r.student.name)}</b></td>${cells}<td>${ov!=null?`<span class="gr ${gradeCls(ov)}">${ov.toFixed(1)}</span>`:'—'}</td></tr>`;
+  }).join('');
+  return `<div class="table-wrap ekboard"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+/* basit yatay çubuk grafik (SVG/DOM, harici kütüphane yok) */
+function barChart(items, max, mode){
+  items=items||[]; if(!items.length) return '<div class="empty">Veri yok</div>';
+  max=max||Math.max(1,...items.map(i=>Number(i.val)||0));
+  return `<div class="bchart">${items.map(i=>{
+    const val=Number(i.val)||0; const pct=max>0?Math.max(2,Math.round(val/max*100)):0;
+    const cls = mode==='puan'?(gradeCls(val)||'acc'):'acc';
+    return `<div class="bch-row"><div class="bch-label">${esc(i.label)}</div>
+      <div class="bch-track"><div class="bch-fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="bch-val">${val}</div></div>`;
+  }).join('')}</div>`;
+}
+/* yönetici/öğretmen: sınıf karne tablosu + öğrenci detayı */
 function perfSelectorView(classes){
-  return `<div class="panel"><div class="panel-head"><h3>Öğrenci Başarı Durumu</h3></div>
-    <p class="muted" style="margin-bottom:12px">Sınıf ve öğrenci seçin; sınav ortalamaları ve ödev başarısı ders ders listelenir.</p>
+  return `<div class="panel"><div class="panel-head"><h3>Karne / Başarı Tablosu</h3></div>
+    <p class="muted" style="margin-bottom:12px">Sınıf seçin; her öğrencinin ders ders sınav ortalaması ve genel ortalaması (e-okul tarzı) listelenir. Bir öğrenci seçerseniz detaylı başarı kartlarını görürsünüz.</p>
     <div class="row">
       <div class="field"><label>Sınıf</label><select id="pfCls">${opts(classes,'','id','name','Sınıf seçin')}</select></div>
-      <div class="field"><label>Öğrenci</label><select id="pfStu"><option value="">Önce sınıf seçin</option></select></div>
+      <div class="field"><label>Öğrenci (detay)</label><select id="pfStu"><option value="">Tüm sınıf tablosu</option></select></div>
     </div></div>
-    <div id="pfBody"><div class="empty">Öğrenci seçince ders bazında başarı burada görünür</div></div>`;
+    <div id="pfBoard"><div class="empty">Sınıf seçince karne tablosu burada görünür</div></div>
+    <div id="pfBody"></div>`;
 }
 function perfSelectorWire(){
   const cs=$('#pfCls'), ss=$('#pfStu'); if(!cs) return;
+  const renderBoard=()=>{ const cid=cs.value;
+    if(!cid){ $('#pfBoard').innerHTML='<div class="empty">Sınıf seçince karne tablosu burada görünür</div>'; return; }
+    const ex=(STATE.exams||[]).filter(e=>e.classId===cid);
+    $('#pfBoard').innerHTML=`<div class="panel"><div class="panel-head"><h3>${esc(clsName(cid))} Karne Tablosu</h3></div>${gradeBoard(ex, studentsOfClass(cid))}</div>`;
+  };
   cs.onchange=()=>{ const list=studentsOfClass(cs.value);
-    ss.innerHTML=list.length?opts(list,'','id','name','Öğrenci seçin'):'<option value="">Öğrenci yok</option>';
-    $('#pfBody').innerHTML='<div class="empty">Öğrenci seçin</div>'; };
+    ss.innerHTML='<option value="">Tüm sınıf tablosu</option>'+(list.length?opts(list,'','id','name'):'');
+    $('#pfBody').innerHTML=''; renderBoard(); };
   ss.onchange=()=>{ const sid=ss.value;
-    if(!sid){ $('#pfBody').innerHTML='<div class="empty">Öğrenci seçin</div>'; return; }
+    if(!sid){ $('#pfBody').innerHTML=''; return; }
     const ex=(STATE.exams||[]).filter(e=>e.studentId===sid);
     const hw=((STATE.grades||{}).homework||[]).filter(h=>h.studentId===sid);
     const name=(studentsOfClass(cs.value).find(s=>s.id===sid)||{}).name||'';
-    $('#pfBody').innerHTML = `<div class="panel-head" style="margin-bottom:14px"><h3>${esc(name)} – Ders Bazında Başarı</h3></div>`+perfCards(perfBySubject(ex,hw));
+    $('#pfBody').innerHTML = `<div class="panel"><div class="panel-head"><h3>${esc(name)} – Ders Bazında Detay</h3></div></div>`+perfCards(perfBySubject(ex,hw));
   };
 }
 function myClassIds(){ const set=new Set(); (ME.teach||[]).forEach(t=>t.classIds.forEach(c=>set.add(c))); return [...set]; }
@@ -247,7 +294,8 @@ VIEWS.teachers=()=>{
     const asg=(t.teach||[]).map(a=>`<span class="tag">${esc(sName(a.subjectId))} (${a.classIds.map(clsName).join(', ')||'—'})</span>`).join('')||'<span class="muted">atama yok</span>';
     const nameCell=`${esc(t.name)} ${t.active===false?'<span class="badge err">pasif</span>':''}${t.mustChange?' <span class="badge warn">şifre bekliyor</span>':''}`;
     return [nameCell,esc(t.username),asg,
-      `<button class="btn btn-sm" data-assign="${t.id}">Ders/Sınıf Ata</button>
+      `<button class="btn btn-sm" data-edu="${t.id}">Düzenle</button>
+       <button class="btn btn-sm" data-assign="${t.id}">Ders/Sınıf Ata</button>
        <button class="btn btn-sm" data-pw="${t.id}">Şifre</button>
        <button class="btn btn-sm" data-act="${t.id}" data-to="${t.active===false?1:0}">${t.active===false?'Aktifleştir':'Dondur'}</button>
        <button class="btn btn-sm btn-danger" data-del="${t.id}">Sil</button>`];
@@ -268,6 +316,7 @@ wire.teachers=()=>{
       closeModal(); toast('Öğretmen eklendi'); go('teachers'); }catch(e){ toast(e.message,'err'); } };
   };
   $('#content').querySelectorAll('[data-assign]').forEach(b=>b.onclick=()=>assignModal(b.dataset.assign));
+  $('#content').querySelectorAll('[data-edu]').forEach(b=>b.onclick=()=>editUserModal(b.dataset.edu));
   $('#content').querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>pwModal(b.dataset.pw));
   $('#content').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>toggleActive(b.dataset.act, b.dataset.to==='1'));
   $('#content').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delUser(b.dataset.del));
@@ -309,6 +358,30 @@ function assignModal(uid){
     try{ await mutate('assignTeacher',{userId:uid,teach}); closeModal(); toast('Atama kaydedildi'); go('teachers'); }catch(e){ toast(e.message,'err'); }
   };
 }
+/* yönetici: kullanıcı (öğretmen/veli) bilgisi düzenle */
+function editUserModal(uid){
+  const t=(STATE.users||[]).find(x=>x.id===uid); if(!t) return;
+  openModal('Bilgileri Düzenle – '+esc(t.name),
+   `<div class="field"><label>Ad Soyad</label><input id="n" value="${esc(t.name||'')}"></div>
+    <div class="field"><label>Kullanıcı Adı</label><input id="us" value="${esc(t.username||'')}"></div>
+    <div class="field"><label>Telefon</label><input id="ph" value="${esc(t.phone||'')}" placeholder="05xx xxx xx xx"></div>
+    <div class="field"><label>E-posta</label><input id="em" value="${esc(t.email||'')}" placeholder="ornek@eposta.com"></div>
+    <button class="btn btn-primary btn-block" id="sv">Kaydet</button>`);
+  $('#sv').onclick=async()=>{ try{ await mutate('updateUser',{userId:uid,name:$('#n').value.trim(),username:$('#us').value.trim(),phone:$('#ph').value.trim(),email:$('#em').value.trim()});
+    closeModal(); toast('Bilgiler güncellendi'); go(PAGE); }catch(e){ toast(e.message,'err'); } };
+}
+/* yönetici: öğrenci bilgisi düzenle */
+function editStudentModal(sid){
+  const s=(STATE.students||[]).find(x=>x.id===sid); if(!s) return;
+  openModal('Öğrenci Düzenle – '+esc(s.name),
+   `<div class="field"><label>Ad Soyad</label><input id="n" value="${esc(s.name||'')}"></div>
+    <div class="field"><label>Sınıf</label><select id="c">${opts(STATE.classes,s.classId,'id','name')}</select></div>
+    <div class="field"><label>Okul No</label><input id="no" value="${esc(s.no||'')}"></div>
+    <div class="field"><label>Veli Telefonu</label><input id="vt" value="${esc(s.veliTel||'')}" placeholder="05xx xxx xx xx"></div>
+    <button class="btn btn-primary btn-block" id="sv">Kaydet</button>`);
+  $('#sv').onclick=async()=>{ try{ await mutate('updateStudent',{studentId:sid,name:$('#n').value.trim(),classId:$('#c').value,no:$('#no').value.trim(),veliTel:$('#vt').value.trim()});
+    closeModal(); toast('Öğrenci güncellendi'); go(PAGE); }catch(e){ toast(e.message,'err'); } };
+}
 
 /* ---- ADMIN: Ogrenci / Veli ---- */
 VIEWS.people=()=>{
@@ -316,8 +389,9 @@ VIEWS.people=()=>{
     const veli=(STATE.users||[]).find(u=>u.role==='parent'&&u.studentId===s.id);
     const veliCell = veli ? esc(veli.username)+(veli.active===false?' <span class="badge err">pasif</span>':'')+(veli.mustChange?' <span class="badge warn">şifre bekliyor</span>':'') : '<span class="muted">yok</span>';
     return [esc(s.name),esc(clsName(s.classId)), veliCell,
-      veli?`<button class="btn btn-sm" data-pw="${veli.id}">Veli Şifre</button> <button class="btn btn-sm" data-act="${veli.id}" data-to="${veli.active===false?1:0}">${veli.active===false?'Aktifleştir':'Dondur'}</button> <button class="btn btn-sm btn-danger" data-del="${veli.id}">Veli Sil</button>`
-           :`<button class="btn btn-sm btn-primary" data-np="${s.id}">Veli Hesabı Aç</button>`];
+      `<button class="btn btn-sm" data-edstu="${s.id}">Düzenle</button> `+
+      (veli?`<button class="btn btn-sm" data-edu="${veli.id}">Veli Bilgi</button> <button class="btn btn-sm" data-pw="${veli.id}">Veli Şifre</button> <button class="btn btn-sm" data-act="${veli.id}" data-to="${veli.active===false?1:0}">${veli.active===false?'Aktifleştir':'Dondur'}</button> <button class="btn btn-sm btn-danger" data-del="${veli.id}">Veli Sil</button>`
+           :`<button class="btn btn-sm btn-primary" data-np="${s.id}">Veli Hesabı Aç</button>`)];
   });
   return `<div class="panel"><div class="panel-head"><h3>Öğrenciler</h3>
       <button class="btn btn-primary btn-sm" id="addStu">+ Öğrenci Ekle</button></div>
@@ -343,6 +417,8 @@ wire.people=()=>{
       closeModal(); toast('Veli hesabı oluşturuldu'); go('people'); }catch(e){ toast(e.message,'err'); } };
   });
   $('#content').querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>pwModal(b.dataset.pw));
+  $('#content').querySelectorAll('[data-edstu]').forEach(b=>b.onclick=()=>editStudentModal(b.dataset.edstu));
+  $('#content').querySelectorAll('[data-edu]').forEach(b=>b.onclick=()=>editUserModal(b.dataset.edu));
   $('#content').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>toggleActive(b.dataset.act, b.dataset.to==='1'));
   $('#content').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delUser(b.dataset.del));
 };
@@ -800,6 +876,145 @@ VIEWS.tsched=()=>schedHTML(STATE.schedule);
 VIEWS.tperf=()=>perfSelectorView(myClasses());
 wire.tperf=perfSelectorWire;
 
+/* ================= DENEME TAKİBİ (dershane tarzı) ================= */
+function allSubjectsList(){ return STATE.allSubjects || STATE.subjects || []; }
+function trialSubjName(id){ const s=allSubjectsList().find(x=>x.id===id); return s?s.name:'?'; }
+/* ana liste: denemeler + yeni deneme formu (düzenleyebilenler için) */
+function trialMainHTML(trials, classes, canEdit){
+  trials=(trials||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const cards = trials.length ? trials.map(t=>{
+    const avg = t.classAvg!=null?t.classAvg:0;
+    const btns = `<button class="btn btn-sm btn-primary" data-trep="${t.id}">Sonuç / Grafik</button>`
+      + (canEdit?` <button class="btn btn-sm" data-tent="${t.id}">Sonuç Gir</button> <button class="btn btn-sm btn-danger" data-tdel="${t.id}">Sil</button>`:'');
+    return `<div class="panel" style="padding:14px">
+      <div class="panel-head"><h3 style="margin:0">${esc(t.name)}</h3><span class="muted">${esc(t.className||'')} · ${esc(t.date||'')}</span></div>
+      <div class="cards" style="margin:10px 0">${card('Ders Sayısı',(t.subjects||[]).length)}${card('Toplam Soru',t.totalQ||0)}${card('Katılan',t.participants||0)}${card('Sınıf Ort. Puan',avg)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${btns}</div></div>`;
+  }).join('') : '<div class="empty">Henüz deneme eklenmemiş</div>';
+  const addBtn = canEdit ? `<button class="btn btn-primary btn-sm" id="trAdd">+ Deneme Ekle</button>` : '';
+  return `<div class="panel"><div class="panel-head"><h3>Deneme Takibi</h3>${addBtn}</div>
+    <p class="muted">Her deneme için öğretmen ders ders soru sayısını belirler, doğru/yanlış/boş girer; net ve puan otomatik hesaplanır. Sonuç ekranında sıralama ve ders bazında grafikler görünür.</p></div>${cards}`;
+}
+/* yeni deneme oluşturma formu */
+function trialAddModal(classes){
+  const subs=allSubjectsList();
+  openModal('Yeni Deneme',
+   `<div class="field"><label>Deneme Adı</label><input id="tn" placeholder="örn. TYT Deneme 1"></div>
+    <div class="field"><label>Sınıf</label><select id="tc">${opts(classes,'','id','name','Sınıf seçin')}</select></div>
+    <div class="field"><label>Tarih</label><input id="td" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <label style="font-weight:600;display:block;margin:10px 0 6px">Dersler ve Soru Sayıları</label>
+    <p class="muted" style="margin-bottom:8px">Dahil etmek istediğiniz derslerin soru sayısını girin (0 = dahil değil).</p>
+    <div id="tsubs">${subs.map(s=>`<div class="row" style="align-items:center;gap:10px;margin-bottom:6px">
+      <div style="flex:1">${esc(s.name)}</div>
+      <input type="number" min="0" style="width:110px" data-sq="${s.id}" placeholder="soru"></div>`).join('')}</div>
+    <button class="btn btn-primary btn-block" id="tsv">Oluştur</button>`);
+  $('#tsv').onclick=async()=>{
+    const subjects=[...document.querySelectorAll('[data-sq]')].map(i=>({subjectId:i.dataset.sq,qCount:Number(i.value)||0})).filter(s=>s.qCount>0);
+    try{ await mutate('addTrial',{name:$('#tn').value.trim(),classId:$('#tc').value,date:$('#td').value,subjects});
+      closeModal(); toast('Deneme oluşturuldu'); go(PAGE); }catch(e){ toast(e.message,'err'); }
+  };
+}
+/* sonuç giriş ekranı: öğrenci × ders D/Y/B tablosu */
+function trialEnterHTML(t){
+  if(!t) return '<div class="empty">Deneme bulunamadı</div>';
+  const subs=t.subjects||[];
+  const head=`<th style="text-align:left">Öğrenci</th>`+subs.map(s=>`<th>${esc(s.subjectName)}<br><span class="muted">${s.qCount} soru · D/Y/B</span></th>`).join('');
+  const body=(t.rows||[]).map(r=>{
+    const cells=subs.map(s=>{ const c=(r.cells||{})[s.subjectId]||{};
+      return `<td><div style="display:flex;gap:4px;justify-content:center" data-stu="${r.studentId}" data-sub="${s.subjectId}">
+        <input type="number" min="0" class="tcell td" style="width:46px" value="${c.d!=null?c.d:''}" placeholder="D">
+        <input type="number" min="0" class="tcell ty" style="width:46px" value="${c.y!=null?c.y:''}" placeholder="Y">
+        <input type="number" min="0" class="tcell tb" style="width:46px" value="${c.b!=null?c.b:''}" placeholder="B"></div></td>`;
+    }).join('');
+    return `<tr><td style="text-align:left"><b>${esc(r.studentName)}</b></td>${cells}</tr>`;
+  }).join('');
+  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} – Sonuç Girişi</h3>
+      <div style="display:flex;gap:8px"><button class="btn btn-sm" id="trBack">← Geri</button><button class="btn btn-primary btn-sm" id="trSave">Kaydet</button></div></div>
+    <p class="muted" style="margin-bottom:10px">${esc(t.className||'')} · Her ders için Doğru / Yanlış / Boş girin. Net = D − Y/4. Boş bırakılan öğrenci sıralamaya girmez.</p>
+    <div class="table-wrap ekboard"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+/* sonuç + sıralama + ders bazında grafik ekranı */
+function trialReportHTML(t, readOnlyMine){
+  if(!t) return '<div class="empty">Deneme bulunamadı</div>';
+  const subs=t.subjects||[];
+  const chart = barChart((t.subjAvg||[]).map(s=>({label:s.subjectName+' ('+s.qCount+')', val:s.avgNet})), null, 'net');
+  let tableHTML;
+  if(readOnlyMine){
+    const m=t.mine;
+    if(!m||!m.hasData){ tableHTML='<div class="empty">Bu deneme için çocuğunuzun sonucu henüz girilmemiş</div>'; }
+    else {
+      const rowCells=subs.map(s=>{ const c=(m.cells||{})[s.subjectId];
+        return `<tr><td style="text-align:left">${esc(s.subjectName)}</td><td>${c?c.d:'—'}</td><td>${c?c.y:'—'}</td><td>${c?c.b:'—'}</td><td><b>${c?c.net:'—'}</b></td></tr>`;
+      }).join('');
+      tableHTML=`<div class="cards" style="margin-bottom:12px">${card('Toplam Net',m.totalNet)}${card('Puan',m.puan)}${card('Sınıf Sırası',(m.rank||'—')+' / '+(t.participants||0))}${card('Sınıf Ort.',t.classAvg||0)}</div>
+        <div class="table-wrap"><table><thead><tr><th style="text-align:left">Ders</th><th>D</th><th>Y</th><th>B</th><th>Net</th></tr></thead><tbody>${rowCells}</tbody></table></div>`;
+    }
+  } else {
+    const ranked=(t.rows||[]).filter(r=>r.hasData).sort((a,b)=>b.puan-a.puan);
+    if(!ranked.length){ tableHTML='<div class="empty">Henüz sonuç girilmemiş</div>'; }
+    else {
+      const head=`<th>Sıra</th><th style="text-align:left">Öğrenci</th>`+subs.map(s=>`<th>${esc(s.subjectName)}<br><span class="muted">net</span></th>`).join('')+`<th>Toplam Net</th><th>Puan</th>`;
+      const body=ranked.map(r=>{
+        const cells=subs.map(s=>{ const c=(r.cells||{})[s.subjectId]; return `<td>${c?c.net:'<span class="muted">—</span>'}</td>`; }).join('');
+        return `<tr><td><b>${r.rank}</b></td><td style="text-align:left"><b>${esc(r.studentName)}</b></td>${cells}<td><b>${r.totalNet}</b></td><td><span class="gr ${gradeCls(r.puan)}">${r.puan}</span></td></tr>`;
+      }).join('');
+      tableHTML=`<div class="table-wrap ekboard"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+  }
+  return `<div class="panel"><div class="panel-head"><h3>${esc(t.name)} – Sonuç</h3>
+      <div style="display:flex;gap:8px"><button class="btn btn-sm" id="trBack">← Geri</button></div></div>
+    <p class="muted">${esc(t.className||'')} · ${esc(t.date||'')} · Toplam ${t.totalQ||0} soru · ${t.participants||0} katılımcı</p></div>
+    <div class="panel"><div class="panel-head"><h3>Ders Bazında Ortalama Net</h3></div>${chart}</div>
+    <div class="panel"><div class="panel-head"><h3>${readOnlyMine?'Çocuğumun Sonucu':'Sıralama'}</h3></div>${tableHTML}</div>`;
+}
+/* ortak render: scope -> {trials, classes, canEdit, readOnlyMine} */
+function renderTrials(trials, classes, canEdit, readOnlyMine){
+  const v=TRIAL_VIEW;
+  if(v.mode==='enter' && canEdit){
+    const t=(trials||[]).find(x=>x.id===v.id);
+    return trialEnterHTML(t);
+  }
+  if(v.mode==='report'){
+    const t=(trials||[]).find(x=>x.id===v.id);
+    return trialReportHTML(t, readOnlyMine);
+  }
+  return trialMainHTML(trials, classes, canEdit);
+}
+function wireTrials(trials, classes, canEdit){
+  const v=TRIAL_VIEW;
+  if(v.mode==='main'){
+    if(canEdit){ const a=$('#trAdd'); if(a) a.onclick=()=>trialAddModal(classes); }
+    $('#content').querySelectorAll('[data-trep]').forEach(b=>b.onclick=()=>{ TRIAL_VIEW={id:b.dataset.trep,mode:'report'}; go(PAGE); });
+    if(canEdit){
+      $('#content').querySelectorAll('[data-tent]').forEach(b=>b.onclick=()=>{ TRIAL_VIEW={id:b.dataset.tent,mode:'enter'}; go(PAGE); });
+      $('#content').querySelectorAll('[data-tdel]').forEach(b=>b.onclick=async()=>{
+        if(!confirm('Bu denemeyi silmek istediğinize emin misiniz?')) return;
+        try{ await mutate('deleteTrial',{trialId:b.dataset.tdel}); toast('Silindi'); go(PAGE); }catch(e){ toast(e.message,'err'); } });
+    }
+    return;
+  }
+  const back=$('#trBack'); if(back) back.onclick=()=>{ TRIAL_VIEW={id:'',mode:'main'}; go(PAGE); };
+  if(v.mode==='enter' && canEdit){
+    const sv=$('#trSave'); if(sv) sv.onclick=async()=>{
+      const map={};
+      $('#content').querySelectorAll('[data-stu]').forEach(cell=>{
+        const sid=cell.dataset.stu, sub=cell.dataset.sub;
+        const d=cell.querySelector('.td').value, y=cell.querySelector('.ty').value, b=cell.querySelector('.tb').value;
+        if(d===''&&y===''&&b==='') return;
+        map[sid]=map[sid]||{}; map[sid][sub]={d,y,b};
+      });
+      const records=Object.keys(map).map(sid=>({studentId:sid,cells:map[sid]}));
+      try{ const r=await mutate('saveTrialResults',{trialId:v.id,records}); toast('Kaydedildi ('+(r.saved||0)+' öğrenci)'); TRIAL_VIEW={id:v.id,mode:'report'}; go(PAGE); }catch(e){ toast(e.message,'err'); }
+    };
+  }
+}
+VIEWS.trials=()=>renderTrials(STATE.trials, STATE.classes||[], true, false);
+wire.trials=()=>wireTrials(STATE.trials, STATE.classes||[], true);
+VIEWS.ttrials=()=>renderTrials(STATE.trials, myClasses(), true, false);
+wire.ttrials=()=>wireTrials(STATE.trials, myClasses(), true);
+VIEWS.ptrials=()=>renderTrials(STATE.trials, [], false, true);
+wire.ptrials=()=>wireTrials(STATE.trials, [], false);
+
 /* ================= VELİ ================= */
 VIEWS.pchild=()=>{
   const c=STATE.child; if(!c) return '<div class="empty">Öğrenci kaydı bulunamadı</div>';
@@ -826,8 +1041,9 @@ VIEWS.pexam=()=>{
 VIEWS.pperf=()=>{
   const c=STATE.child;
   const rows=perfBySubject(STATE.exams, (STATE.grades||{}).homework||[]);
+  const board = c ? `<div class="panel"><div class="panel-head"><h3>Karne Tablosu</h3></div>${gradeBoard(STATE.exams||[], [c])}</div>` : '';
   return `<div class="panel"><div class="panel-head"><h3>${esc(c?c.name:'Çocuğum')} – Ders Bazında Başarı</h3></div>
-    <p class="muted">Her ders için sınav ortalaması ve ödev başarı oranı aşağıda gösterilmektedir.</p></div>`+perfCards(rows);
+    <p class="muted">Her ders için sınav ortalaması ve ödev başarı oranı aşağıda gösterilmektedir.</p></div>`+board+perfCards(rows);
 };
 VIEWS.patt=()=>{
   const recs=(STATE.attendance||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));

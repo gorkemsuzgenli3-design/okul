@@ -159,3 +159,21 @@ tr:hover td{background:var(--panel2)}
   .side-foot{border:none;padding:0;display:flex;gap:8px}
   .side-foot .btn-block{width:auto;margin:0}
 }
+
+/* ---- Karne (e-okul) tablosu + not rozetleri ---- */
+.gr{display:inline-block;min-width:40px;padding:3px 8px;border-radius:7px;font-weight:700;font-size:.85rem;background:#1a2540;color:var(--acc)}
+.gr.ok{background:#13311f;color:var(--ok)} .gr.warn{background:#3a2f12;color:var(--warn)} .gr.err{background:#3a222a;color:var(--err)}
+.ekboard table th,.ekboard table td{text-align:center;white-space:nowrap}
+.ekboard table th:nth-child(2),.ekboard table td:nth-child(2){text-align:left}
+.ekboard .tcell{text-align:center;padding:4px 2px}
+/* ---- deneme grafigi (yatay cubuk) ---- */
+.bchart{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.bch-row{display:flex;align-items:center;gap:12px}
+.bch-label{flex:0 0 180px;font-size:.9rem;color:var(--muted);text-align:right}
+.bch-track{flex:1;height:22px;background:#1a2230;border-radius:7px;overflow:hidden}
+.bch-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--acc),var(--acc2));min-width:2px;transition:width .4s}
+.bch-fill.ok{background:linear-gradient(90deg,var(--ok),#2fae77)}
+.bch-fill.warn{background:linear-gradient(90deg,var(--warn),#d98e16)}
+.bch-fill.err{background:linear-gradient(90deg,var(--err),#d84f4f)}
+.bch-val{flex:0 0 54px;font-weight:700;color:var(--txt)}
+@media(max-width:640px){.bch-label{flex-basis:96px}}
